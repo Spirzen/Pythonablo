@@ -1,0 +1,327 @@
+{
+  "floor": 4,
+  "kills": 45,
+  "player": {
+    "x": 14.236559999999969,
+    "y": 21.5,
+    "stats": {
+      "max_hp": 282,
+      "hp": 302.0,
+      "max_mana": 146.0,
+      "mana": 127.61399999999969,
+      "damage": 40,
+      "armor": 5.0,
+      "regen": 1.5
+    },
+    "inventory": {
+      "gold": 0,
+      "dust": 6,
+      "slots": [
+        {
+          "uid": "f2da8e6f",
+          "name": "Клинок",
+          "category": "weapon",
+          "quality": "magic",
+          "level": 3,
+          "slot": "weapon_main",
+          "stats": {
+            "damage": 17.855999999999998,
+            "armor": 4.572365692387195
+          },
+          "description": "Острый клинок",
+          "set_id": null
+        },
+        {
+          "uid": "d2529270",
+          "name": "Кираса",
+          "category": "armor",
+          "quality": "rare",
+          "level": 3,
+          "slot": "chest",
+          "stats": {
+            "armor": 25.519683673143366,
+            "max_hp": 44.949999999999996,
+            "regen": 4.943234114296998
+          },
+          "description": "",
+          "set_id": null
+        },
+        {
+          "uid": "efad532e",
+          "name": "Топор",
+          "category": "weapon",
+          "quality": "normal",
+          "level": 1,
+          "slot": "weapon_main",
+          "stats": {
+            "damage": 16.0
+          },
+          "description": "Тяжёлый топор",
+          "set_id": null
+        },
+        {
+          "uid": "17042a6b",
+          "name": "Пояс",
+          "category": "armor",
+          "quality": "rare",
+          "level": 3,
+          "slot": "belt",
+          "stats": {
+            "armor": 11.358808963139246,
+            "max_hp": 26.970000000000002,
+            "skill_damage": 4.339339157312778
+          },
+          "description": "",
+          "set_id": null
+        },
+        {
+          "uid": "797d76f7",
+          "name": "Кинжал",
+          "category": "weapon",
+          "quality": "magic",
+          "level": 4,
+          "slot": "weapon_off",
+          "stats": {
+            "damage": 21.264281395459278,
+            "dexterity": 4.896
+          },
+          "description": "Быстрый кинжал",
+          "set_id": null
+        },
+        {
+          "uid": "75378c4b",
+          "name": "Обод",
+          "category": "jewelry",
+          "quality": "normal",
+          "level": 4,
+          "slot": "set_primary",
+          "stats": {
+            "armor": 10.879999999999999,
+            "max_hp": 27.199999999999996
+          },
+          "description": "",
+          "set_id": null
+        },
+        {
+          "uid": "84ce0719",
+          "name": "Посох",
+          "category": "weapon",
+          "quality": "normal",
+          "level": 3,
+          "slot": "weapon_main",
+          "stats": {
+            "damage": 12.4,
+            "max_mana": 18.6
+          },
+          "description": "Магический посох",
+          "set_id": null
+        },
+        {
+          "uid": "49e7cd3e",
+          "name": "Кольцо",
+          "category": "jewelry",
+          "quality": "magic",
+          "level": 2,
+          "slot": "ring_left",
+          "stats": {
+            "damage": 4.032,
+            "max_mana": 3.471237435177936
+          },
+          "description": "",
+          "set_id": null
+        },
+        {
+          "uid": "310eb539",
+          "name": "Топор",
+          "category": "weapon",
+          "quality": "normal",
+          "level": 3,
+          "slot": "weapon_main",
+          "stats": {
+            "damage": 19.84
+          },
+          "description": "Тяжёлый топор",
+          "set_id": null
+        },
+        {
+          "uid": "efa446e6",
+          "name": "Штаны",
+          "category": "armor",
+          "quality": "normal",
+          "level": 3,
+          "slot": "pants",
+          "stats": {
+            "armor": 6.2,
+            "max_hp": 14.879999999999999
+          },
+          "description": "",
+          "set_id": null
+        },
+        {
+          "uid": "5191e185",
+          "name": "Штаны",
+          "category": "armor",
+          "quality": "normal",
+          "level": 2,
+          "slot": "pants",
+          "stats": {
+            "armor": 5.6000000000000005,
+            "max_hp": 13.440000000000001
+          },
+          "description": "",
+          "set_id": null
+        },
+        {
+          "uid": "e7aed91c",
+          "name": "Талисман",
+          "category": "jewelry",
+          "quality": "normal",
+          "level": 5,
+          "slot": "talisman",
+          "stats": {
+            "regen": 1.48
+          },
+          "description": "",
+          "set_id": null
+        },
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    "equipment": {
+      "helmet": null,
+      "shoulders": null,
+      "chest": null,
+      "gloves": null,
+      "belt": null,
+      "pants": null,
+      "boots": null,
+      "amulet": null,
+      "ring_left": null,
+      "ring_right": null,
+      "talisman": {
+        "uid": "e5acc726",
+        "name": "Талисман",
+        "category": "jewelry",
+        "quality": "legendary",
+        "level": 2,
+        "slot": "talisman",
+        "stats": {
+          "regen": 2.0160000000000005,
+          "dexterity": 2.6755134555978635,
+          "max_mana": 4.394635927075044,
+          "skill_damage": 4.256829092354246
+        },
+        "description": "",
+        "set_id": null
+      },
+      "weapon_main": {
+        "uid": "107d616d",
+        "name": "Посох",
+        "category": "weapon",
+        "quality": "legendary",
+        "level": 3,
+        "slot": "weapon_main",
+        "stats": {
+          "damage": 22.32,
+          "max_mana": 33.480000000000004,
+          "skill_damage": 3.988307052711409,
+          "strength": 5.384564009317667,
+          "regen": 4.086529428709115
+        },
+        "description": "Магический посох",
+        "set_id": null
+      },
+      "weapon_off": {
+        "uid": "0a059675",
+        "name": "Кинжал",
+        "category": "weapon",
+        "quality": "magic",
+        "level": 1,
+        "slot": "weapon_off",
+        "stats": {
+          "damage": 9.6,
+          "dexterity": 3.5999999999999996,
+          "strength": 2.538215277449023
+        },
+        "description": "Быстрый кинжал",
+        "set_id": null
+      },
+      "set_primary": {
+        "uid": "34d6269f",
+        "name": "Обод",
+        "category": "jewelry",
+        "quality": "normal",
+        "level": 1,
+        "slot": "set_primary",
+        "stats": {
+          "armor": 8.0,
+          "max_hp": 20.0
+        },
+        "description": "",
+        "set_id": null
+      },
+      "set_secondary": null,
+      "set_third": null,
+      "set_fourth": null,
+      "set_fifth": null
+    },
+    "experience": {
+      "level": 12,
+      "xp": 163,
+      "xp_to_next": 175
+    }
+  },
+  "floors_visited": [
+    1,
+    2,
+    3,
+    4
+  ]
+}

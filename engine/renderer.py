@@ -1,0 +1,428 @@
+"""Isometric coordinate helpers and rendering."""
+
+from __future__ import annotations
+
+import math
+from typing import Optional
+
+import pygame
+
+from core.config import ISO_TILE_H, ISO_TILE_W, SCREEN_HEIGHT, SCREEN_WIDTH, UI_PANEL, UI_PANEL_BORDER
+
+
+def world_to_screen(wx: float, wy: float, cam_x: float, cam_y: float) -> tuple[float, float]:
+    sx = (wx - wy) * (ISO_TILE_W / 2) - cam_x + SCREEN_WIDTH / 2
+    sy = (wx + wy) * (ISO_TILE_H / 2) - cam_y + SCREEN_HEIGHT / 2 - 80
+    return sx, sy
+
+
+def screen_to_world(sx: float, sy: float, cam_x: float, cam_y: float) -> tuple[float, float]:
+    x = sx - SCREEN_WIDTH / 2 + cam_x
+    y = sy - SCREEN_HEIGHT / 2 + 80 + cam_y
+    wx = (x / (ISO_TILE_W / 2) + y / (ISO_TILE_H / 2)) / 2
+    wy = (y / (ISO_TILE_H / 2) - x / (ISO_TILE_W / 2)) / 2
+    return wx, wy
+
+
+def _clamp_color(r: int, g: int, b: int) -> tuple[int, int, int]:
+    return max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b))
+
+
+def _shade(color: tuple[int, int, int], delta: int) -> tuple[int, int, int]:
+    return _clamp_color(color[0] + delta, color[1] + delta, color[2] + delta)
+
+
+class Renderer:
+    def __init__(self, screen: pygame.Surface) -> None:
+        self.screen = screen
+        self.font = pygame.font.SysFont("Segoe UI", 17, bold=True)
+        self.font_small = pygame.font.SysFont("Segoe UI", 14)
+        self.font_label = pygame.font.SysFont("Segoe UI", 13, bold=True)
+        self.font_big = pygame.font.SysFont("Segoe UI", 40, bold=True)
+        self.font_huge = pygame.font.SysFont("Segoe UI", 56, bold=True)
+        self.font_mid = pygame.font.SysFont("Segoe UI", 26)
+        self.font_menu = pygame.font.SysFont("Segoe UI", 22)
+        self.font_title = pygame.font.SysFont("Segoe UI", 18, bold=True)
+        self.font_damage = pygame.font.SysFont("Segoe UI", 20, bold=True)
+        self._vignette: pygame.Surface | None = None
+        self._tile_cache: dict[tuple, pygame.Surface] = {}
+
+    def _ensure_vignette(self) -> pygame.Surface:
+        if self._vignette is None:
+            w, h = SCREEN_WIDTH, SCREEN_HEIGHT
+            surf = pygame.Surface((w, h), pygame.SRCALPHA)
+            cx, cy = w // 2, h // 2
+            max_dist = math.hypot(cx, cy)
+            for y in range(0, h, 2):
+                for x in range(0, w, 2):
+                    d = math.hypot(x - cx, y - cy) / max_dist
+                    alpha = int(180 * max(0.0, max(0.0, d - 0.35) ** 1.8))
+                    if alpha > 0:
+                        surf.fill((4, 6, 14, alpha), (x, y, 2, 2))
+            self._vignette = surf
+        return self._vignette
+
+    def draw_vignette(self, strength: float = 1.0) -> None:
+        vig = self._ensure_vignette()
+        if strength >= 0.99:
+            self.screen.blit(vig, (0, 0))
+        else:
+            temp = vig.copy()
+            temp.set_alpha(int(255 * strength))
+            self.screen.blit(temp, (0, 0))
+
+    def draw_panel(
+        self,
+        rect: pygame.Rect,
+        *,
+        fill: tuple = UI_PANEL,
+        alpha: int = 210,
+        border: tuple = UI_PANEL_BORDER,
+        radius: int = 12,
+        accent_top: bool = True,
+    ) -> None:
+        surf = pygame.Surface((rect.w, rect.h), pygame.SRCALPHA)
+        pygame.draw.rect(surf, (*fill, alpha), (0, 0, rect.w, rect.h), border_radius=radius)
+        # Inner top highlight
+        highlight = pygame.Surface((rect.w - 4, max(8, rect.h // 5)), pygame.SRCALPHA)
+        highlight.fill((255, 255, 255, 18))
+        surf.blit(highlight, (2, 2))
+        if accent_top:
+            pygame.draw.line(surf, (255, 198, 88, 140), (radius, 2), (rect.w - radius, 2), 2)
+        pygame.draw.rect(surf, (*border, 220), (0, 0, rect.w, rect.h), width=2, border_radius=radius)
+        self.screen.blit(surf, rect.topleft)
+
+    def draw_bar(
+        self,
+        x: int,
+        y: int,
+        w: int,
+        h: int,
+        ratio: float,
+        fill: tuple,
+        bg: tuple,
+        *,
+        radius: int = 6,
+        glossy: bool = True,
+    ) -> None:
+        ratio = max(0.0, min(1.0, ratio))
+        pygame.draw.rect(self.screen, bg, (x, y, w, h), border_radius=radius)
+        fill_w = max(0, int(w * ratio))
+        if fill_w > 0:
+            if glossy and fill_w >= 4:
+                bar_surf = pygame.Surface((fill_w, h), pygame.SRCALPHA)
+                pygame.draw.rect(bar_surf, fill, (0, 0, fill_w, h), border_radius=radius)
+                shine_h = max(2, h // 3)
+                shine = pygame.Surface((fill_w, shine_h), pygame.SRCALPHA)
+                shine.fill((255, 255, 255, 55))
+                bar_surf.blit(shine, (0, 1))
+                self.screen.blit(bar_surf, (x, y))
+            else:
+                pygame.draw.rect(self.screen, fill, (x, y, fill_w, h), border_radius=radius)
+        pygame.draw.rect(self.screen, _shade(UI_PANEL_BORDER, 20), (x, y, w, h), width=1, border_radius=radius)
+
+    def blit_centered(self, font: pygame.font.Font, text: str, color: tuple, cx: int, y: int) -> pygame.Rect:
+        surf = font.render(text, True, color)
+        rect = surf.get_rect(midtop=(cx, y))
+        self.screen.blit(surf, rect)
+        return rect
+
+    def blit_text_outlined(
+        self,
+        font: pygame.font.Font,
+        text: str,
+        color: tuple,
+        pos: tuple[int, int],
+        *,
+        outline: tuple = (20, 12, 8),
+        outline_width: int = 2,
+        alpha: int = 255,
+    ) -> None:
+        base = font.render(text, True, color)
+        if alpha < 255:
+            base.set_alpha(alpha)
+        ox, oy = pos
+        for dx in range(-outline_width, outline_width + 1):
+            for dy in range(-outline_width, outline_width + 1):
+                if dx * dx + dy * dy <= outline_width * outline_width + 1:
+                    shadow = font.render(text, True, outline)
+                    if alpha < 255:
+                        shadow.set_alpha(alpha)
+                    self.screen.blit(shadow, (ox + dx, oy + dy))
+        self.screen.blit(base, pos)
+
+    def blit_sprite(
+        self,
+        sprite: Optional[pygame.Surface],
+        sx: float,
+        sy: float,
+        *,
+        hit_flash: bool = False,
+        scale: float = 1.0,
+        glow_color: tuple[int, int, int] | None = None,
+    ) -> bool:
+        if sprite is None:
+            return False
+        img = sprite
+        if scale != 1.0:
+            w, h = sprite.get_size()
+            img = pygame.transform.scale(sprite, (max(1, int(w * scale)), max(1, int(h * scale))))
+        rect = img.get_rect(center=(int(sx), int(sy)))
+        if glow_color:
+            glow = pygame.transform.scale(img, (int(rect.w * 1.15), int(rect.h * 1.15)))
+            glow.set_alpha(45)
+            glow_rect = glow.get_rect(center=rect.center)
+            tint = pygame.Surface(glow.get_size(), pygame.SRCALPHA)
+            tint.fill((*glow_color, 80))
+            glow.blit(tint, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+            self.screen.blit(glow, glow_rect)
+        if hit_flash:
+            temp = img.copy()
+            white = pygame.Surface(temp.get_size(), pygame.SRCALPHA)
+            white.fill((255, 255, 255, 140))
+            temp.blit(white, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+            self.screen.blit(temp, rect)
+        else:
+            self.screen.blit(img, rect)
+        return True
+
+    def draw_entity_shadow(self, sx: float, sy: float, radius: float = 14.0, alpha: int = 70) -> None:
+        w = int(radius * 2.2)
+        h = max(6, int(radius * 0.55))
+        surf = pygame.Surface((w, h), pygame.SRCALPHA)
+        pygame.draw.ellipse(surf, (0, 0, 0, alpha), (0, 0, w, h))
+        self.screen.blit(surf, surf.get_rect(center=(int(sx), int(sy + radius * 0.35))))
+
+    def draw_iso_tile(
+        self,
+        wx: float,
+        wy: float,
+        cam_x: float,
+        cam_y: float,
+        color: tuple,
+        *,
+        height: int = 0,
+        pulse: float = 0.0,
+        accent: tuple[int, int, int] | None = None,
+    ) -> None:
+        sx, sy = world_to_screen(wx, wy, cam_x, cam_y)
+        hw, hh = ISO_TILE_W // 2, ISO_TILE_H // 2
+        top = (int(sx), int(sy - height))
+        right = (int(sx + hw), int(sy + hh - height))
+        bottom = (int(sx), int(sy + ISO_TILE_H - height))
+        left = (int(sx - hw), int(sy + hh - height))
+
+        if pulse > 0 and accent:
+            glow_r = int(ISO_TILE_W * (0.55 + pulse * 0.15))
+            glow_s = pygame.Surface((glow_r * 2, glow_r), pygame.SRCALPHA)
+            pygame.draw.ellipse(glow_s, (*accent, int(35 + pulse * 45)), (0, 0, glow_r * 2, glow_r))
+            self.screen.blit(glow_s, glow_s.get_rect(center=(int(sx), int(sy + hh - height + 4))))
+
+        top_color = _shade(color, 22)
+        left_color = _shade(color, -18)
+        right_color = _shade(color, -8)
+        pygame.draw.polygon(self.screen, top_color, [top, right, bottom, left])
+        # Left face depth
+        depth_h = 7
+        pygame.draw.polygon(
+            self.screen,
+            left_color,
+            [left, bottom, (left[0], left[1] + depth_h), (bottom[0] - hw, bottom[1] + depth_h // 2)],
+        )
+        # Right edge accent
+        pygame.draw.line(self.screen, right_color, top, right, 1)
+        pygame.draw.line(self.screen, right_color, right, bottom, 1)
+        # Top highlight
+        mid_l = ((top[0] + left[0]) // 2, (top[1] + left[1]) // 2)
+        mid_r = ((top[0] + right[0]) // 2, (top[1] + right[1]) // 2)
+        pygame.draw.line(self.screen, _shade(color, 38), mid_l, top, 2)
+        pygame.draw.line(self.screen, _shade(color, 38), top, mid_r, 2)
+        # Subtle outline
+        outline = _shade(color, -35)
+        pygame.draw.polygon(self.screen, outline, [top, right, bottom, left], 1)
+
+        if accent and pulse > 0:
+            inner = [
+                (top[0], top[1] + 2),
+                (right[0] - 4, right[1] - 2),
+                (bottom[0], bottom[1] - 2),
+                (left[0] + 4, left[1] - 2),
+            ]
+            pulse_a = int(50 + pulse * 70)
+            overlay = pygame.Surface((ISO_TILE_W + 4, ISO_TILE_H + 12), pygame.SRCALPHA)
+            cx, cy = (ISO_TILE_W + 4) // 2, (ISO_TILE_H + 12) // 2
+            pts = [
+                (top[0] - sx + cx, top[1] - sy + cy),
+                (right[0] - sx + cx, right[1] - sy + cy),
+                (bottom[0] - sx + cx, bottom[1] - sy + cy),
+                (left[0] - sx + cx, left[1] - sy + cy),
+            ]
+            if len(pts) >= 3:
+                pygame.draw.polygon(overlay, (*accent, pulse_a), pts)
+                self.screen.blit(overlay, (int(sx) - cx, int(sy) - cy))
+
+    def draw_character_orb(
+        self,
+        sx: float,
+        sy: float,
+        radius: float,
+        body: tuple[int, int, int],
+        *,
+        accent: tuple[int, int, int] | None = None,
+        hit_flash: bool = False,
+    ) -> None:
+        if hit_flash:
+            body = (255, 255, 255)
+        r = int(radius)
+        self.draw_entity_shadow(sx, sy, radius)
+        if accent:
+            glow = pygame.Surface((r * 4, r * 4), pygame.SRCALPHA)
+            pygame.draw.circle(glow, (*accent, 35), (r * 2, r * 2), r + 6)
+            self.screen.blit(glow, glow.get_rect(center=(int(sx), int(sy))))
+        # Body gradient approximation
+        body_s = pygame.Surface((r * 2 + 4, r * 2 + 4), pygame.SRCALPHA)
+        pygame.draw.circle(body_s, body, (r + 2, r + 2), r)
+        pygame.draw.circle(body_s, _shade(body, 35), (r + 2, r + 2 - r // 3), max(2, r // 2))
+        pygame.draw.circle(body_s, _shade(body, -40), (r + 2, r + 2 + r // 4), max(2, r // 3))
+        pygame.draw.circle(body_s, _shade(body, -25), (r + 2, r + 2), r, 2)
+        self.screen.blit(body_s, body_s.get_rect(center=(int(sx), int(sy))))
+
+    def draw_loot_orb(self, sx: float, sy: float, color: tuple, anim: float) -> None:
+        bob = math.sin(anim * 4.0) * 4.0
+        cy = sy - 10 + bob
+        pulse = 0.5 + 0.5 * math.sin(anim * 5.0)
+        r = int(7 + pulse * 2)
+        # Beam
+        beam_h = int(28 + pulse * 10)
+        beam = pygame.Surface((16, beam_h), pygame.SRCALPHA)
+        for i in range(beam_h):
+            a = int(30 * (1.0 - i / beam_h) * (0.6 + pulse * 0.4))
+            pygame.draw.line(beam, (*color, a), (8, beam_h - i), (8, beam_h - i), 2)
+        self.screen.blit(beam, beam.get_rect(midbottom=(int(sx), int(cy) + r)))
+        # Glow
+        glow = pygame.Surface((r * 6, r * 6), pygame.SRCALPHA)
+        pygame.draw.circle(glow, (*color, int(40 + pulse * 30)), (r * 3, r * 3), r + 8)
+        self.screen.blit(glow, glow.get_rect(center=(int(sx), int(cy))))
+        pygame.draw.circle(self.screen, color, (int(sx), int(cy)), r)
+        pygame.draw.circle(self.screen, _shade(color, 60), (int(sx - 2), int(cy - 2)), max(2, r // 2))
+        pygame.draw.circle(self.screen, _shade(color, -30), (int(sx), int(cy)), r, 2)
+
+    def draw_portal_marker(
+        self,
+        sx: float,
+        sy: float,
+        label: str,
+        color: tuple,
+        anim: float,
+        *,
+        direction: str = "down",
+    ) -> None:
+        pulse = 0.5 + 0.5 * math.sin(anim * 3.0)
+        r = int(18 + pulse * 6)
+        glow = pygame.Surface((r * 4, r * 4), pygame.SRCALPHA)
+        pygame.draw.circle(glow, (*color, int(25 + pulse * 35)), (r * 2, r * 2), r + 10)
+        self.screen.blit(glow, glow.get_rect(center=(int(sx), int(sy))))
+        ring_s = pygame.Surface((r * 2 + 8, r * 2 + 8), pygame.SRCALPHA)
+        pygame.draw.circle(ring_s, (*color, int(100 + pulse * 80)), (r + 4, r + 4), r, 3)
+        self.screen.blit(ring_s, ring_s.get_rect(center=(int(sx), int(sy))))
+        # Rotating runes
+        for i in range(4):
+            a = anim * 2.0 + i * math.pi / 2
+            ox = sx + math.cos(a) * (r + 4)
+            oy = sy + math.sin(a) * (r * 0.45)
+            pygame.draw.circle(self.screen, _shade(color, 40), (int(ox), int(oy)), 3)
+        arrow = "▼" if direction == "down" else "▲"
+        self.blit_text_outlined(self.font_mid, arrow, color, (int(sx) - 10, int(sy) - r - 8), outline=(20, 10, 8))
+        lbl = self.font_label.render(label, True, _shade(color, 30))
+        shadow = self.font_label.render(label, True, (10, 8, 16))
+        rect = lbl.get_rect(midbottom=(int(sx), int(sy) - r - 14))
+        self.screen.blit(shadow, shadow.get_rect(midbottom=(rect.midbottom[0] + 1, rect.midbottom[1] + 1)))
+        self.screen.blit(lbl, rect)
+
+    def draw_hp_bar_world(self, sx: float, sy: float, ratio: float, width: int = 38, height: int = 6) -> None:
+        ratio = max(0.0, min(1.0, ratio))
+        bx = int(sx) - width // 2
+        by = int(sy)
+        pygame.draw.rect(self.screen, (15, 8, 10), (bx - 1, by - 1, width + 2, height + 2), border_radius=3)
+        pygame.draw.rect(self.screen, (35, 18, 22), (bx, by, width, height), border_radius=3)
+        fill_w = max(0, int(width * ratio))
+        if fill_w > 0:
+            col = (230, 55, 45) if ratio < 0.35 else (230, 100, 45) if ratio < 0.65 else (210, 70, 55)
+            pygame.draw.rect(self.screen, col, (bx, by, fill_w, height), border_radius=3)
+            shine = pygame.Surface((fill_w, max(2, height // 3)), pygame.SRCALPHA)
+            shine.fill((255, 255, 255, 45))
+            self.screen.blit(shine, (bx, by + 1))
+
+    def draw_fireball(self, sx: float, sy: float, anim: float) -> None:
+        pulse = 0.5 + 0.5 * math.sin(anim * 12.0)
+        r = int(10 + pulse * 2)
+        glow = pygame.Surface((r * 5, r * 5), pygame.SRCALPHA)
+        pygame.draw.circle(glow, (255, 100, 30, 50), (r * 2 + 4, r * 2 + 4), r + 8)
+        pygame.draw.circle(glow, (255, 180, 60, 80), (r * 2 + 4, r * 2 + 4), r + 3)
+        self.screen.blit(glow, glow.get_rect(center=(int(sx), int(sy - 6))))
+        pygame.draw.circle(self.screen, (255, 120, 40), (int(sx), int(sy - 6)), r)
+        pygame.draw.circle(self.screen, (255, 230, 140), (int(sx - 2), int(sy - 8)), max(3, r // 2))
+
+    def draw_arc_slash(
+        self,
+        cx: float,
+        cy: float,
+        radius: float,
+        angle: float,
+        arc: float,
+        progress: float,
+        color: tuple = (255, 240, 180),
+    ) -> None:
+        sweep = arc * min(1.0, progress * 1.15)
+        start = angle - arc / 2
+        steps = max(12, int(32 * progress))
+        outer_r = radius * (0.85 + progress * 0.2)
+
+        surf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        outer_pts = [(int(cx), int(cy))]
+        for i in range(steps + 1):
+            a = start + sweep * (i / max(1, steps))
+            outer_pts.append((int(cx + math.cos(a) * outer_r), int(cy + math.sin(a) * outer_r)))
+        if len(outer_pts) > 2:
+            pygame.draw.polygon(surf, (*color, int(120 * (1 - progress * 0.35))), outer_pts)
+            pygame.draw.polygon(surf, (255, 255, 255, int(40 * (1 - progress))), outer_pts, 1)
+
+        arc_pts = []
+        for i in range(steps + 1):
+            a = start + sweep * (i / max(1, steps))
+            arc_pts.append((int(cx + math.cos(a) * outer_r), int(cy + math.sin(a) * outer_r)))
+        if len(arc_pts) > 1:
+            pygame.draw.lines(surf, (*color, 230), False, arc_pts, 5)
+            pygame.draw.lines(surf, (255, 255, 255, 200), False, arc_pts, 2)
+
+        self.screen.blit(surf, (0, 0))
+
+    def draw_whirlwind(self, cx: float, cy: float, radius: float, angle: float) -> None:
+        surf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        pygame.draw.circle(surf, (120, 180, 255, 35), (int(cx), int(cy)), int(radius), 2)
+        for i in range(5):
+            a = angle + i * (math.tau / 5)
+            x1 = cx + math.cos(a) * radius * 0.35
+            y1 = cy + math.sin(a) * radius * 0.35
+            x2 = cx + math.cos(a + 1.1) * radius
+            y2 = cy + math.sin(a + 1.1) * radius
+            pygame.draw.line(surf, (180, 220, 255, 180), (int(x1), int(y1)), (int(x2), int(y2)), 4)
+            pygame.draw.line(surf, (255, 255, 255, 100), (int(x1), int(y1)), (int(x2), int(y2)), 2)
+        self.screen.blit(surf, (0, 0))
+
+    def draw_aoe_ring_world(self, sx: float, sy: float, radius: int, color: tuple, alpha: int, width: int = 3) -> None:
+        surf = pygame.Surface((radius * 2 + 8, radius * 2 + 8), pygame.SRCALPHA)
+        cx, cy = radius + 4, radius + 4
+        pygame.draw.circle(surf, (*color, alpha // 3), (cx, cy), radius)
+        pygame.draw.circle(surf, (*color, alpha), (cx, cy), radius, width)
+        pygame.draw.circle(surf, (255, 255, 255, alpha // 2), (cx, cy), max(1, radius - width), 1)
+        self.screen.blit(surf, (int(sx) - radius - 4, int(sy) - radius - 4))
+
+    def draw_dash_trail(self, sx: float, sy: float, anim: float) -> None:
+        for i in range(3):
+            a = anim * 8.0 - i * 0.4
+            r = 26 - i * 5
+            alpha = 80 - i * 22
+            surf = pygame.Surface((r * 2, r * 2), pygame.SRCALPHA)
+            pygame.draw.circle(surf, (100, 200, 255, alpha), (r, r), r, 2)
+            self.screen.blit(surf, surf.get_rect(center=(int(sx), int(sy))))

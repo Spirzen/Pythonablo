@@ -1,0 +1,27 @@
+{
+  "weapons": [
+    {"name": "Клинок", "slot": "weapon_main", "stats": {"damage": 12}, "description": "Острый клинок"},
+    {"name": "Топор", "slot": "weapon_main", "stats": {"damage": 16}, "description": "Тяжёлый топор"},
+    {"name": "Кинжал", "slot": "weapon_off", "stats": {"damage": 8, "dexterity": 3}, "description": "Быстрый кинжал"},
+    {"name": "Посох", "slot": "weapon_main", "stats": {"damage": 10, "max_mana": 15}, "description": "Магический посох"}
+  ],
+  "armor": [
+    {"name": "Шлем", "slot": "helmet", "stats": {"armor": 5, "max_hp": 10}},
+    {"name": "Кираса", "slot": "chest", "stats": {"armor": 12, "max_hp": 25}},
+    {"name": "Наплечники", "slot": "shoulders", "stats": {"armor": 6}},
+    {"name": "Перчатки", "slot": "gloves", "stats": {"armor": 3, "damage": 2}},
+    {"name": "Пояс", "slot": "belt", "stats": {"armor": 4, "max_hp": 15}},
+    {"name": "Штаны", "slot": "pants", "stats": {"armor": 5, "max_hp": 12}},
+    {"name": "Сапоги", "slot": "boots", "stats": {"armor": 4, "dexterity": 2}}
+  ],
+  "jewelry": [
+    {"name": "Амулет", "slot": "amulet", "stats": {"max_mana": 20}},
+    {"name": "Кольцо", "slot": "ring_left", "stats": {"damage": 3}},
+    {"name": "Талисман", "slot": "talisman", "stats": {"regen": 1}},
+    {"name": "Обод", "slot": "set_primary", "stats": {"armor": 8, "max_hp": 20}}
+  ],
+  "consumables": [
+    {"name": "Зелье жизни", "stats": {"max_hp": 50}, "description": "Восстанавливает 50 HP"},
+    {"name": "Зелье маны", "stats": {"max_mana": 30}, "description": "Восстанавливает ману"}
+  ]
+}

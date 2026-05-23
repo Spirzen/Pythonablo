@@ -1,0 +1,7 @@
+{
+  "skills": [
+    {"id": "power_strike", "name": "Мощный удар", "description": "Усиленная атака", "cooldown": 3.0},
+    {"id": "whirlwind", "name": "Вихрь", "description": "Удар по области", "cooldown": 5.0},
+    {"id": "dash_attack", "name": "Рывок-удар", "description": "Атака после рывка", "cooldown": 4.0}
+  ]
+}
