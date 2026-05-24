@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from core.config import RARITY_COLORS
 from entities.entity import Entity
 from player.inventory import Item
 
@@ -15,5 +14,5 @@ class GroundItem(Entity):
 
     def color(self) -> tuple[int, int, int]:
         if self.item:
-            return RARITY_COLORS.get(self.item.quality.value, (200, 200, 200))
+            return self.item.color
         return (200, 200, 200)

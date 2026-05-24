@@ -11,3 +11,4 @@ from entities.entity import Entity
 class NPC(Entity):
     name: str = "Странник"
     dialog_id: str = "wanderer"
+    sprite_name: str = ""

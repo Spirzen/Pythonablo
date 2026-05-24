@@ -16,12 +16,13 @@ FPS = 120
 TITLE = "Pythonablo — Diabloid ARPG"
 
 TILE_SIZE = 48
-MAP_WIDTH = 41
-MAP_HEIGHT = 31
+MAP_WIDTH = 61
+MAP_HEIGHT = 46
 
 ISO_TILE_W = 64
 ISO_TILE_H = 32
 
+PORTAL_INTERACT_RADIUS = 1.85
 PLAYER_SPEED = 310.0
 DASH_SPEED_MULTIPLIER = 4.5
 DASH_DURATION = 0.15
@@ -35,7 +36,7 @@ ATTACK_DAMAGE_BASE = 18.0
 ENEMY_BASE_HP = 40.0
 ENEMY_BASE_DAMAGE = 8.0
 ENEMY_BASE_SPEED = 85.0
-ENEMIES_PER_FLOOR = 14
+ENEMIES_PER_FLOOR = 38
 
 XP_BASE = 12
 XP_LEVEL_MULT = 1.18
@@ -61,8 +62,11 @@ RARITY_COLORS = {
     "magic": (80, 120, 255),
     "rare": (255, 215, 60),
     "legendary": (255, 140, 40),
-    "set": (60, 200, 90),
+    "set": (0, 220, 200),
 }
+
+# Legendary affix definitions — see core/legendary_defs.py
+from core.legendary_defs import LEGENDARY_AFFIXES  # noqa: E402, F401
 
 
 class GameState(Enum):
@@ -70,6 +74,9 @@ class GameState(Enum):
     PLAYING = auto()
     INVENTORY = auto()
     PAUSED = auto()
+    SKILLS = auto()
+    SKILL_UPGRADE = auto()
+    MERCHANT = auto()
     GAME_OVER = auto()
 
 
@@ -118,6 +125,28 @@ class EquipmentSlot(Enum):
     SET_FIFTH = "set_fifth"
 
 
+class GameMode(Enum):
+    CLASSIC = "classic"
+    ARENA = "arena"
+    ARENA_BOSSES = "arena_bosses"
+    SPEED = "speed"
+
+
+GAME_MODE_LABELS = {
+    GameMode.CLASSIC: "Классика",
+    GameMode.ARENA: "Арена",
+    GameMode.ARENA_BOSSES: "Арена с боссами",
+    GameMode.SPEED: "Скорость",
+}
+
+GAME_MODE_DESCRIPTIONS = {
+    GameMode.CLASSIC: "Подземелья, этажи, лут и наставник",
+    GameMode.ARENA: "Выживание: каждые 30 сек — новый раунд",
+    GameMode.ARENA_BOSSES: "Арена, но все враги — боссы",
+    GameMode.SPEED: "×2 скорость, только бонусы, автоподбор",
+}
+
+
 class Difficulty(Enum):
     EASY = "easy"
     NORMAL = "normal"
@@ -129,6 +158,11 @@ DIFFICULTY_LABELS = {
     Difficulty.NORMAL: "Средний",
     Difficulty.HARD: "Сложный",
 }
+
+ENEMY_DAMAGE_GLOBAL_MULT = 1.05
+SPEED_MODE_MULT = 2.0
+ARENA_ROUND_DURATION = 30.0
+ARENA_ROUND_DIFFICULTY_STEP = 0.15
 
 DIFFICULTY_MULT = {
     Difficulty.EASY: {"player_hp": 1.35, "player_dmg": 1.15, "enemy_hp": 0.72, "enemy_dmg": 0.65, "enemy_count": 0.85},

@@ -38,14 +38,29 @@ class Explosion:
         return self.max_radius * min(1.0, self.progress * 1.15)
 
 
+@dataclass
+class SpriteBurst:
+    x: float
+    y: float
+    life: float = 0.22
+    max_life: float = 0.22
+    scale: float = 1.0
+
+
 class EffectSystem:
+    MAX_PARTICLES = 180
+    MAX_EXPLOSIONS = 24
+
     def __init__(self) -> None:
         self.explosions: list[Explosion] = []
         self.rings: list[AoERing] = []
         self.particles: list[Particle] = []
+        self.hit_bursts: list[SpriteBurst] = []
         self.rng = random.Random()
 
     def spawn_death_explosion(self, x: float, y: float, *, big: bool = False) -> None:
+        if len(self.explosions) >= self.MAX_EXPLOSIONS:
+            self.explosions = self.explosions[-self.MAX_EXPLOSIONS // 2 :]
         self.explosions.append(
             Explosion(
                 x,
@@ -68,6 +83,8 @@ class EffectSystem:
             )
         )
         count = 42 if big else 28
+        if len(self.particles) + count > self.MAX_PARTICLES:
+            count = max(8, self.MAX_PARTICLES - len(self.particles))
         red_palette = [
             (255, 40, 20),
             (255, 80, 40),
@@ -92,6 +109,9 @@ class EffectSystem:
                 )
             )
 
+    def spawn_hit_burst(self, x: float, y: float, *, scale: float = 1.0) -> None:
+        self.hit_bursts.append(SpriteBurst(x, y, scale=scale))
+
     def spawn_aoe_ring(self, x: float, y: float, radius: float, color: tuple[int, int, int] = (255, 200, 100)) -> None:
         self.rings.append(AoERing(x, y, life=0.35, max_life=0.35, max_radius=radius, color=color))
 
@@ -112,6 +132,9 @@ class EffectSystem:
             if p.life > 0:
                 alive.append(p)
         self.particles = alive
+        for hb in self.hit_bursts:
+            hb.life -= dt
+        self.hit_bursts = [h for h in self.hit_bursts if h.life > 0]
 
 
 @dataclass

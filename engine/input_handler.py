@@ -73,10 +73,10 @@ class InputHandler:
             self.state.menu_up = True
         if key in (pygame.K_DOWN, pygame.K_s):
             self.state.menu_down = True
-        if key == pygame.K_1:
-            self.state.skill_pressed = "aoe"
-        if key == pygame.K_2:
+        if key == pygame.K_1 or key == pygame.K_f:
             self.state.skill_pressed = "fireball"
+        if key == pygame.K_2:
+            self.state.skill_pressed = "aoe"
         if key == pygame.K_3:
             self.state.skill_pressed = "summon"
         if key == pygame.K_4:

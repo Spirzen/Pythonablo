@@ -31,6 +31,28 @@ def can_occupy(game_map: GameMap, x: float, y: float, radius: float = ENTITY_RAD
     return True
 
 
+def clamp_to_walkable(game_map: GameMap, x: float, y: float, *, radius: float = ENTITY_RADIUS) -> tuple[float, float]:
+    """Snap entity back onto the nearest walkable tile."""
+    if can_occupy(game_map, x, y, radius):
+        return x, y
+    tx, ty = int(x), int(y)
+    best: tuple[float, float] | None = None
+    best_dist = 10**9
+    for dy in range(-3, 4):
+        for dx in range(-3, 4):
+            cx, cy = tx + dx, ty + dy
+            if not game_map.is_walkable(cx, cy):
+                continue
+            wx, wy = cx + 0.5, cy + 0.5
+            if not can_occupy(game_map, wx, wy, radius):
+                continue
+            dist = (wx - x) ** 2 + (wy - y) ** 2
+            if dist < best_dist:
+                best_dist = dist
+                best = (wx, wy)
+    return best if best is not None else (x, y)
+
+
 def move_slide(
     game_map: GameMap,
     x: float,

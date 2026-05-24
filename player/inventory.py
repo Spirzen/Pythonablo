@@ -7,7 +7,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
-from core.config import DATA_DIR, EquipmentSlot, ItemCategory, ItemQuality, RARITY_COLORS
+from core.config import DATA_DIR, EquipmentSlot, ItemCategory, ItemQuality, LEGENDARY_AFFIXES, RARITY_COLORS
 
 
 @dataclass
@@ -21,11 +21,18 @@ class Item:
     stats: dict[str, float] = field(default_factory=dict)
     description: str = ""
     set_id: str | None = None
+    legendary_affix: str | None = None
+    replaces_skill: str | None = None
+    upgrade_level: int = 0
 
     @property
     def color(self) -> tuple[int, int, int]:
-        if self.quality == ItemQuality.SET or self.set_id or self.stats.get("skill_damage", 0) > 0:
+        if self.quality == ItemQuality.SET or self.set_id:
             return RARITY_COLORS["set"]
+        if self.quality == ItemQuality.LEGENDARY:
+            return RARITY_COLORS["legendary"]
+        if self.stats.get("skill_damage", 0) > 0 and self.quality in (ItemQuality.MAGIC, ItemQuality.RARE):
+            return RARITY_COLORS["magic"]
         return RARITY_COLORS.get(self.quality.value, (200, 200, 200))
 
     def display_name(self) -> str:
@@ -45,6 +52,13 @@ class Item:
             lines.append(f"+{int(v) if v == int(v) else v:.1f} {label}")
         if self.set_id:
             lines.append(f"Комплект: {self.set_id}")
+        if self.legendary_affix and self.legendary_affix in LEGENDARY_AFFIXES:
+            aff = LEGENDARY_AFFIXES[self.legendary_affix]
+            lines.append(f"★ {aff['name']}: {aff['desc']}")
+        if self.replaces_skill:
+            lines.append(f"Заменяет: {self.replaces_skill}")
+        if self.upgrade_level > 0:
+            lines.append(f"Улучшение: +{self.upgrade_level * 10}%")
         qname = {
             ItemQuality.NORMAL: "Обычный",
             ItemQuality.MAGIC: "Магический",
@@ -65,7 +79,22 @@ STAT_LABELS = {
     "mana_regen": "реген маны",
     "strength": "сила",
     "dexterity": "ловкость",
+    "vitality": "живучесть",
+    "energy": "энергия",
     "skill_damage": "урон умений",
+    "attack_speed": "скорость атаки",
+    "crit_chance": "шанс крита",
+    "block": "блок",
+    "move_speed": "скорость бега",
+    "gold_find": "находка золота",
+    "xp_bonus": "опыт",
+    "life_on_hit": "HP за удар",
+    "thorns_damage": "шипы",
+    "fire_resist": "огнестойкость",
+    "cold_resist": "морозостойкость",
+    "poison_resist": "ядостойкость",
+    "cooldown_reduction": "перезарядка",
+    "magic_find": "маг. находка",
 }
 
 
@@ -116,6 +145,9 @@ class Inventory:
             "stats": item.stats,
             "description": item.description,
             "set_id": item.set_id,
+            "legendary_affix": item.legendary_affix,
+            "replaces_skill": item.replaces_skill,
+            "upgrade_level": item.upgrade_level,
         }
 
     @classmethod
@@ -137,6 +169,9 @@ class Inventory:
                     stats=raw.get("stats", {}),
                     description=raw.get("description", ""),
                     set_id=raw.get("set_id"),
+                    legendary_affix=raw.get("legendary_affix"),
+                    replaces_skill=raw.get("replaces_skill"),
+                    upgrade_level=raw.get("upgrade_level", 0),
                 )
         return inv
 

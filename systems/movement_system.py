@@ -7,7 +7,7 @@ import math
 from core.config import DASH_COOLDOWN, DASH_DURATION, DASH_SPEED_MULTIPLIER
 from entities.player import PlayerEntity
 from engine.input_handler import InputState
-from world.collision import move_slide
+from world.collision import clamp_to_walkable, move_slide
 from world.map import GameMap
 
 
@@ -35,10 +35,11 @@ class MovementSystem:
                 dx += 1
             if dx or dy:
                 length = math.hypot(dx, dy)
-                speed = player.move_speed * dt * 0.012
+                speed = player.effective_move_speed * dt * 0.012
                 mx = (dx / length) * speed
                 my = (dy / length) * speed
                 player.x, player.y = move_slide(game_map, player.x, player.y, mx, my)
+                player.x, player.y = clamp_to_walkable(game_map, player.x, player.y)
                 player.facing_angle = math.atan2(dy, dx)
 
     def try_dash(self, player: PlayerEntity, game_map: GameMap, inp: InputState) -> bool:
@@ -59,10 +60,11 @@ class MovementSystem:
         if length == 0:
             return False
 
-        dash_dist = player.move_speed * DASH_SPEED_MULTIPLIER * DASH_DURATION * 0.012
+        dash_dist = player.effective_move_speed * DASH_SPEED_MULTIPLIER * DASH_DURATION * 0.012
         mx = (dx / length) * dash_dist
         my = (dy / length) * dash_dist
         player.x, player.y = move_slide(game_map, player.x, player.y, mx, my)
+        player.x, player.y = clamp_to_walkable(game_map, player.x, player.y)
         player.is_dashing = True
         player.dash_timer = DASH_DURATION
         player.dash_cooldown_timer = DASH_COOLDOWN

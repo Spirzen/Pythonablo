@@ -32,10 +32,10 @@ class LevelGenerator:
         grid = [[Tile() for _ in range(MAP_WIDTH)] for _ in range(MAP_HEIGHT)]
         rooms: list[Room] = []
         attempts = 0
-        while len(rooms) < 8 and attempts < 120:
+        while len(rooms) < 12 and attempts < 180:
             attempts += 1
-            w = self.rng.randint(6, 10)
-            h = self.rng.randint(6, 9)
+            w = self.rng.randint(8, 14)
+            h = self.rng.randint(7, 12)
             x = self.rng.randint(1, MAP_WIDTH - w - 2)
             y = self.rng.randint(1, MAP_HEIGHT - h - 2)
             room = Room(x, y, w, h)

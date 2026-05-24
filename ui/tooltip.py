@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import pygame
 
-from core.config import SCREEN_HEIGHT, SCREEN_WIDTH, UI_ACCENT, UI_PANEL, UI_PANEL_BORDER, UI_TEXT, UI_TEXT_DIM
+from core.config import LEGENDARY_AFFIXES, SCREEN_HEIGHT, SCREEN_WIDTH, UI_ACCENT, UI_PANEL, UI_PANEL_BORDER, UI_TEXT, UI_TEXT_DIM
 from core.config import EquipmentSlot
 from engine.renderer import Renderer
 from entities.player import PlayerEntity
 from player.inventory import STAT_LABELS, Item
+from core.legendary_defs import SKILL_OVERRIDE_LABELS
 from systems.skill_system import SkillSystem
 
 GOOD = (100, 220, 130)
@@ -25,7 +26,7 @@ SKILL_INFO: dict[str, dict] = {
     },
     "fireball": {
         "title": "Огненный шар",
-        "desc": "Метает огненный снаряд в сторону курсора.",
+        "desc": "Метает огненный снаряд. Клавиши 1 или F. Взрыв при попадании.",
         "mana": SkillSystem.MANA_COSTS["fireball"],
         "cd": SkillSystem.COOLDOWNS["fireball"],
         "dmg_base": 28,
@@ -77,6 +78,15 @@ def item_tooltip_rows(item: Item, player: PlayerEntity, *, compare_slot: Equipme
     elif item.slot:
         rows.append((f"Слот: {item.slot.value}", UI_TEXT_DIM))
 
+    if item.set_id:
+        rows.append((f"Комплект «{item.set_id}»", item.color))
+    if item.legendary_affix and item.legendary_affix in LEGENDARY_AFFIXES:
+        aff = LEGENDARY_AFFIXES[item.legendary_affix]
+        rows.append((f"★ {aff['name']}", (255, 180, 60)))
+        rows.append((aff["desc"], (255, 200, 120)))
+    if item.replaces_skill:
+        rows.append((f"Заменяет умение: {item.replaces_skill}", (180, 200, 255)))
+
     stat_keys = set(item.stats.keys())
     if equipped:
         stat_keys |= set(equipped.stats.keys())
@@ -119,10 +129,23 @@ def item_tooltip_rows(item: Item, player: PlayerEntity, *, compare_slot: Equipme
 
 def skill_tooltip_rows(skill_id: str, player: PlayerEntity, cd: float = 0.0) -> list[tuple[str, tuple[int, int, int]]]:
     info = SKILL_INFO.get(skill_id, {})
+    if not info and skill_id in SKILL_OVERRIDE_LABELS:
+        title = SKILL_OVERRIDE_LABELS[skill_id]
+        rows: list[tuple[str, tuple[int, int, int]]] = [(title, UI_ACCENT), ("Легендарное умение", UI_TEXT_DIM)]
+        ocd = SkillSystem.OVERRIDE_COOLDOWNS.get(skill_id, 5.0)
+        om = SkillSystem.OVERRIDE_MANA.get(skill_id, 14.0)
+        rows.append((f"Стоимость: {int(om)} мана", UI_TEXT_DIM))
+        rows.append((f"Кулдаун: {ocd:.1f}с", UI_TEXT_DIM if cd <= 0 else (255, 180, 100)))
+        return rows
     title = info.get("title", skill_id)
     rows: list[tuple[str, tuple[int, int, int]]] = [(title, UI_ACCENT)]
     if info.get("desc"):
         rows.append((info["desc"], UI_TEXT_DIM))
+
+    if skill_id in ("aoe", "fireball", "whirlwind", "pulse", "summon"):
+        ulvl = player.skill_upgrades.level_of(skill_id)
+        if ulvl > 0:
+            rows.append((f"Улучшение навыка: {ulvl}", (100, 220, 160)))
 
     lvl = player.experience.level
     base = info.get("dmg_base", 0)
@@ -146,9 +169,9 @@ def skill_tooltip_rows(skill_id: str, player: PlayerEntity, cd: float = 0.0) -> 
 
 
 class TooltipDrawer:
-    MAX_W = 300
-    PAD = 10
-    LINE_H = 18
+    MAX_W = 420
+    PAD = 14
+    LINE_H = 22
 
     def __init__(self, renderer: Renderer) -> None:
         self.renderer = renderer

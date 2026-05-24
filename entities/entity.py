@@ -15,6 +15,12 @@ class Entity:
     alive: bool = True
     uid: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
     components: dict[str, Any] = field(default_factory=dict)
+    motion_phase: float = 0.0
+    motion_amount: float = 0.0
+
+    def __post_init__(self) -> None:
+        self._motion_last_x = self.x
+        self._motion_last_y = self.y
 
     def tile_pos(self) -> tuple[int, int]:
         return int(self.x), int(self.y)
