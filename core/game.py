@@ -163,6 +163,8 @@ class Game:
         self._enemy_templates: list = self._load_enemy_templates()
         self._portal_hint_cd: float = 0.0
         self._cached_portal_hint: str | None = None
+        self.kill_streak: int = 0
+        self.kill_streak_timer: float = 0.0
 
         self.events.subscribe("enemy_killed", self._on_enemy_killed)
         self.events.subscribe("item_dropped", self._on_item_dropped)
@@ -388,16 +390,31 @@ class Game:
         if self.bg_sprite:
             scaled = pygame.transform.smoothscale(self.bg_sprite, (SCREEN_WIDTH, SCREEN_HEIGHT))
             overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-            overlay.fill((8, 10, 18, 165))
+            overlay.fill((12, 8, 18, 150))
             composite = scaled.copy()
             composite.blit(overlay, (0, 0))
+            warmth = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            cx, cy = SCREEN_WIDTH // 2, int(SCREEN_HEIGHT * 0.65)
+            for ring in range(10, 0, -1):
+                alpha = int(14 * (1.0 - ring / 10))
+                pygame.draw.circle(warmth, (255, 140, 60, alpha), (cx, cy), ring * 60)
+            composite.blit(warmth, (0, 0))
             self._bg_composite = composite.convert()
         else:
             grad = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-            grad.fill((10, 12, 20))
-            for y in range(0, SCREEN_HEIGHT, 4):
-                a = int(30 * y / SCREEN_HEIGHT)
-                pygame.draw.rect(grad, (18 + a // 3, 22 + a // 3, 38 + a // 2), (0, y, SCREEN_WIDTH, 4))
+            for y in range(SCREEN_HEIGHT):
+                t = y / SCREEN_HEIGHT
+                r = int(8 + t * 14)
+                g = int(10 + t * 16)
+                b = int(22 + t * 28)
+                pygame.draw.line(grad, (r, g, b), (0, y), (SCREEN_WIDTH, y))
+            # Subtle radial warmth at center-bottom (torchlight feel)
+            warmth = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            cx, cy = SCREEN_WIDTH // 2, int(SCREEN_HEIGHT * 0.72)
+            for ring in range(12, 0, -1):
+                alpha = int(18 * (1.0 - ring / 12))
+                pygame.draw.circle(warmth, (255, 160, 80, alpha), (cx, cy), ring * 55)
+            grad.blit(warmth, (0, 0))
             self._bg_composite = grad.convert()
 
     @staticmethod
@@ -415,6 +432,8 @@ class Game:
         self.floor = 1
         self.kills = 0
         self._last_autosave_kills = 0
+        self.kill_streak = 0
+        self.kill_streak_timer = 0.0
         self.difficulty = self.menu_ui.difficulty
         self.game_mode = mode
         self.floor_cache.clear()
@@ -876,20 +895,31 @@ class Game:
         self.kills += 1
         self.effects.spawn_death_explosion(enemy.x, enemy.y, big=enemy.is_boss)
         xp_mult = 1.0 + self.player.equipment.bonus("xp_bonus") * 0.02
-        ups = self.player.experience.add_xp(int(enemy.xp_value * xp_mult))
+        if self.kill_streak >= 3:
+            xp_mult *= 1.0 + min(0.25, (self.kill_streak - 2) * 0.03)
+        xp_gain = int(enemy.xp_value * xp_mult)
+        ups = self.player.experience.add_xp(xp_gain)
+        self.effects.spawn_xp_sparkles(enemy.x, enemy.y, amount=10 + min(12, self.kill_streak))
+        self.floating_texts.append((enemy.x, enemy.y - 0.3, f"+{xp_gain} XP", (255, 220, 90), 1.0))
+        self.kill_streak += 1
+        self.kill_streak_timer = 4.0
         for _ in range(ups):
             self.player.stats.on_level_up()
-            self.player.skill_tree.unspent_points += ups
+            self.player.skill_tree.unspent_points += 1
             self.audio.play_sfx("level_up")
+            self.effects.spawn_level_up_burst(self.player.x, self.player.y)
             if self.player.experience.level % 5 == 0:
                 self.player.skill_upgrades.pending_points += 1
         if ups > 0:
             self.level_up_text = f"Уровень {self.player.experience.level}!"
             self.level_up_banner = 3.0
+            self.camera.add_shake(power=14.0 if ups > 1 else 10.0, duration=0.18)
             if self.player.skill_upgrades.pending_points > 0 and self.state == GameState.PLAYING:
                 self._prev_state = GameState.PLAYING
                 self.state = GameState.SKILL_UPGRADE
                 self.skill_upgrade_selected = 0
+        elif enemy.is_boss:
+            self.camera.add_shake(power=12.0, duration=0.14)
         self.player.clamp_resources()
         gold = random.randint(1, 4) + max(0, enemy.area_level // 2)
         fortune = self.player.equipment.legendary_bonus("fortune")
@@ -1110,6 +1140,14 @@ class Game:
         gm = self.game_map
         inp = self.input.state
 
+        if p.hit_flash > 0.12:
+            self.kill_streak = 0
+            self.kill_streak_timer = 0.0
+        elif self.kill_streak_timer > 0:
+            self.kill_streak_timer -= dt
+            if self.kill_streak_timer <= 0:
+                self.kill_streak = 0
+
         self.movement.update(p, gm, inp, dt)
         p.heal_over_time(dt)
         self.camera.follow(p.x, p.y, dt)
@@ -1280,6 +1318,8 @@ class Game:
             inventory_open=(self.state == GameState.INVENTORY),
             mouse_pos=mouse,
             portal_hint=self.portal_hint,
+            kill_streak=self.kill_streak,
+            kill_streak_timer=self.kill_streak_timer,
         )
         if self.arena_active:
             if self.game_mode in (GameMode.ARENA, GameMode.ARENA_BOSSES):
@@ -1479,14 +1519,23 @@ class Game:
             col = (100, 255, 160) if m.hit_flash <= 0 else (255, 255, 255)
             r.draw_character_orb(msx, msy, 14 * scale, col, accent=(80, 220, 140), hit_flash=m.hit_flash > 0)
 
-        for sx_w, sy_w, val, alpha in self.combat.damage_numbers:
+        for sx_w, sy_w, val, alpha, is_crit in self.combat.damage_numbers:
             sx, sy = cam.world_to_screen(sx_w, sy_w)
+            scale = 1.15 if is_crit else 1.0
+            dmg_color = (255, 100, 60) if is_crit else (255, 230, 130)
+            outline = (120, 20, 10) if is_crit else (80, 40, 10)
+            text = str(val)
+            font = r.font_damage
+            if is_crit:
+                text = f"{val}!"
+                font = r.font_mid
             r.blit_text_outlined(
-                r.font_damage,
-                str(val),
-                (255, 230, 130),
-                (int(sx) - 8, int(sy) - 24),
-                outline=(80, 40, 10),
+                font,
+                text,
+                dmg_color,
+                (int(sx) - 8, int(sy) - int(24 * scale)),
+                outline=outline,
+                outline_width=3 if is_crit else 2,
                 alpha=int(alpha * 255),
             )
 

@@ -38,8 +38,12 @@ ENEMY_BASE_DAMAGE = 8.0
 ENEMY_BASE_SPEED = 85.0
 ENEMIES_PER_FLOOR = 38
 
-XP_BASE = 12
-XP_LEVEL_MULT = 1.18
+XP_BASE = 18
+XP_LEVEL_MULT = 1.19
+XP_LEVEL_ADD = 5
+# Extra XP gate for early levels (fades out by level XP_EARLY_CAP)
+XP_EARLY_CAP = 8
+XP_EARLY_STEP = 0.045
 
 # UI palette — refined dark fantasy
 UI_MARGIN = 20

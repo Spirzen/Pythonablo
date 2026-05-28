@@ -112,6 +112,41 @@ class EffectSystem:
     def spawn_hit_burst(self, x: float, y: float, *, scale: float = 1.0) -> None:
         self.hit_bursts.append(SpriteBurst(x, y, scale=scale))
 
+    def spawn_xp_sparkles(self, x: float, y: float, *, amount: int = 12) -> None:
+        gold_palette = [
+            (255, 220, 80),
+            (255, 200, 60),
+            (255, 180, 40),
+            (255, 240, 140),
+            (220, 180, 50),
+        ]
+        count = min(amount, max(4, self.MAX_PARTICLES - len(self.particles)))
+        for _ in range(count):
+            angle = self.rng.random() * math.tau
+            speed = 40 + self.rng.random() * 100
+            self.particles.append(
+                Particle(
+                    x,
+                    y - 0.15,
+                    math.cos(angle) * speed,
+                    math.sin(angle) * speed - 30,
+                    life=0.55 + self.rng.random() * 0.35,
+                    max_life=0.7,
+                    size=3 + self.rng.random() * 4,
+                    color=self.rng.choice(gold_palette),
+                )
+            )
+
+    def spawn_level_up_burst(self, x: float, y: float) -> None:
+        self.spawn_xp_sparkles(x, y, amount=28)
+        if len(self.explosions) < self.MAX_EXPLOSIONS:
+            self.explosions.append(
+                Explosion(x, y, life=0.55, max_life=0.55, max_radius=90.0, color=(255, 210, 80))
+            )
+            self.explosions.append(
+                Explosion(x, y, life=0.35, max_life=0.35, max_radius=50.0, color=(255, 240, 160))
+            )
+
     def spawn_aoe_ring(self, x: float, y: float, radius: float, color: tuple[int, int, int] = (255, 200, 100)) -> None:
         self.rings.append(AoERing(x, y, life=0.35, max_life=0.35, max_radius=radius, color=color))
 

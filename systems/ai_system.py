@@ -231,7 +231,8 @@ class AISystem:
             base_hp = tmpl.get("base_hp", 40) * scale * hp_mult
             base_dmg = tmpl.get("base_damage", 8) * scale * dmg_mult * ENEMY_DAMAGE_GLOBAL_MULT
             base_spd = tmpl.get("base_speed", 85) * (1.0 + (area_level - 1) * 0.05)
-            xp = int(tmpl.get("xp", 12) * (1 + area_level * 0.1))
+            xp_scale = 0.88 + area_level * 0.08
+            xp = int(tmpl.get("xp", 12) * xp_scale)
         else:
             kind = self.rng.choice(list(EnemyKind))
             eid = "fallen"
@@ -239,7 +240,7 @@ class AISystem:
             base_hp = 40 * scale * hp_mult
             base_dmg = 8 * scale * dmg_mult * ENEMY_DAMAGE_GLOBAL_MULT
             base_spd = 85
-            xp = int(12 * (1 + area_level * 0.1))
+            xp = int(12 * (0.88 + area_level * 0.08))
             if kind == EnemyKind.RUNNER:
                 base_spd *= 1.4
                 base_hp *= 0.7

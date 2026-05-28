@@ -46,7 +46,7 @@ class CombatSystem:
         self.events = events
         self.slashes: list[SlashEffect] = []
         self.arrows: list[HomingArrow] = []
-        self.damage_numbers: list[tuple[float, float, int, float]] = []
+        self.damage_numbers: list[tuple[float, float, int, float, bool]] = []
 
     def try_attack(
         self,
@@ -95,11 +95,13 @@ class CombatSystem:
             diff = (ea - angle + math.pi) % (2 * math.pi) - math.pi
             if abs(diff) <= half_arc:
                 hit_dmg = damage
+                is_crit = False
                 crit = player.equipment.bonus("crit_chance")
                 if crit > 0 and random.random() < min(0.45, crit * 0.018):
                     hit_dmg *= 1.75
+                    is_crit = True
                 enemy.take_damage(hit_dmg)
-                self.damage_numbers.append((enemy.x, enemy.y, int(hit_dmg), 1.0))
+                self.damage_numbers.append((enemy.x, enemy.y, int(hit_dmg), 1.0, is_crit))
                 self.events.emit("enemy_hit", enemy=enemy, damage=hit_dmg)
                 hits += 1
                 explosive = player.equipment.legendary_bonus("explosive")
@@ -155,7 +157,7 @@ class CombatSystem:
                 arr.y += math.sin(desired) * arr.speed * dt
                 if dist <= arr.radius + target.current_radius:
                     target.take_damage(arr.damage)
-                    self.damage_numbers.append((target.x, target.y, int(arr.damage), 1.0))
+                    self.damage_numbers.append((target.x, target.y, int(arr.damage), 1.0, False))
                     self.events.emit("enemy_hit", enemy=target, damage=arr.damage)
                     self._lifesteal(player, arr.damage)
                     if target.is_treasure_goblin:
@@ -168,11 +170,11 @@ class CombatSystem:
         self.arrows = alive_arrows
 
         alive_dn = []
-        for x, y, val, alpha in self.damage_numbers:
-            alpha -= dt * 2.5
-            y -= dt * 2.0
+        for x, y, val, alpha, is_crit in self.damage_numbers:
+            alpha -= dt * (2.0 if is_crit else 2.5)
+            y -= dt * (2.8 if is_crit else 2.0)
             if alpha > 0:
-                alive_dn.append((x, y, val, alpha))
+                alive_dn.append((x, y, val, alpha, is_crit))
         self.damage_numbers = alive_dn
 
     def enemy_attack_player(self, player: PlayerEntity, enemy: EnemyEntity, dt: float) -> None:
@@ -201,6 +203,6 @@ class CombatSystem:
             if player.pending_thorns_damage > 0:
                 enemy.take_damage(player.pending_thorns_damage)
                 player.pending_thorns_damage = 0.0
-            self.damage_numbers.append((player.x, player.y, int(dmg), 1.0))
+            self.damage_numbers.append((player.x, player.y, int(dmg), 1.0, False))
             if player.hp <= 0:
                 self.events.emit("player_died", killer=enemy)

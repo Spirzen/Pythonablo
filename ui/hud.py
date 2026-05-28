@@ -92,6 +92,8 @@ class HUD:
         inventory_open: bool = False,
         mouse_pos: tuple[int, int] | None = None,
         portal_hint: str | None = None,
+        kill_streak: int = 0,
+        kill_streak_timer: float = 0.0,
     ) -> None:
         r = self.renderer
         skill_cooldowns = skill_cooldowns or {}
@@ -100,7 +102,7 @@ class HUD:
         self._layout()
         self._anim += 0.016
 
-        self._draw_top_hud(r, player, floor, kills, dash_cd)
+        self._draw_top_hud(r, player, floor, kills, dash_cd, kill_streak, kill_streak_timer)
 
         if not inventory_open:
             self._draw_bottom_bar_panel(r)
@@ -119,7 +121,16 @@ class HUD:
                 r.screen.blit(ph, rect)
             self._draw_skill_tooltip(player, skill_cooldowns)
 
-    def _draw_top_hud(self, r: Renderer, player: PlayerEntity, floor: int, kills: int, dash_cd: float) -> None:
+    def _draw_top_hud(
+        self,
+        r: Renderer,
+        player: PlayerEntity,
+        floor: int,
+        kills: int,
+        dash_cd: float,
+        kill_streak: int = 0,
+        kill_streak_timer: float = 0.0,
+    ) -> None:
         hud = pygame.Rect(UI_MARGIN, UI_MARGIN, self.HUD_W, self.HUD_H)
         r.draw_panel(hud, alpha=235, accent_top=True)
 
@@ -168,6 +179,19 @@ class HUD:
         xp_y = row2 + 18
         r.screen.blit(self._stat_surfaces["xp"], (inner_l, xp_y))
         r.draw_bar(inner_l, xp_y + 14, bar_w, 8, xp_ratio, (255, 204, 96), (48, 40, 22), radius=4, glossy=True)
+        if xp_ratio > 0.02:
+            shimmer_x = inner_l + int(bar_w * xp_ratio * (0.35 + 0.65 * (0.5 + 0.5 * math.sin(self._anim * 5.0))))
+            shine = pygame.Surface((6, 8), pygame.SRCALPHA)
+            shine.fill((255, 255, 220, 90))
+            r.screen.blit(shine, (shimmer_x - 3, xp_y + 14))
+
+        if kill_streak >= 3 and kill_streak_timer > 0:
+            combo_pulse = 0.75 + 0.25 * math.sin(self._anim * 10.0)
+            combo_col = (int(255 * combo_pulse), int(180 * combo_pulse), int(80 * combo_pulse))
+            bonus_pct = min(25, (kill_streak - 2) * 3)
+            combo_text = f"×{kill_streak}  +{bonus_pct}% XP"
+            combo_s = r.render_text(r.font_label, combo_text, combo_col)
+            r.screen.blit(combo_s, combo_s.get_rect(topright=(inner_r, row2 - 2)))
 
         hp_y = xp_y + 28
         r.screen.blit(self._stat_surfaces["hp"], (inner_l, hp_y))
@@ -335,19 +359,33 @@ class HUD:
         r = self.renderer
         alpha = min(1.0, remaining / 0.5)
         pulse = 0.5 + 0.5 * math.sin(self._anim * 8)
-        y = 200
+        y = 190
+        cx = SCREEN_WIDTH // 2
+        # Golden burst rays behind title
+        ray_s = pygame.Surface((520, 120), pygame.SRCALPHA)
+        for i in range(8):
+            angle = self._anim * 1.5 + i * (math.pi / 4)
+            rx = int(260 + math.cos(angle) * 90)
+            ry = int(60 + math.sin(angle) * 28)
+            ray_a = int(35 * alpha * pulse)
+            pygame.draw.line(ray_s, (255, 200, 80, ray_a), (260, 60), (rx, ry), 3)
+        r.screen.blit(ray_s, ray_s.get_rect(center=(cx, y + 28)))
+        banner = pygame.Surface((440, 72), pygame.SRCALPHA)
+        pygame.draw.rect(banner, (40, 28, 8, int(200 * alpha)), (0, 0, 440, 72), border_radius=16)
+        pygame.draw.rect(banner, (255, 200, 80, int(120 * alpha)), (0, 0, 440, 72), width=2, border_radius=16)
+        r.screen.blit(banner, banner.get_rect(center=(cx, y + 28)))
         r.blit_text_outlined(
             r.font_huge,
             text,
             (255, 220, 80),
-            (SCREEN_WIDTH // 2 - 160, y),
+            (cx - 160, y),
             outline=(80, 50, 10),
             outline_width=3,
             alpha=int(255 * alpha),
         )
         sub = r.font_mid.render("+1 очко навыка", True, UI_ACCENT)
         sub.set_alpha(int(220 * alpha * pulse))
-        r.screen.blit(sub, sub.get_rect(midtop=(SCREEN_WIDTH // 2, y + 58)))
+        r.screen.blit(sub, sub.get_rect(midtop=(cx, y + 58)))
 
     def draw_arena_timer(self, remaining: float, *, round_num: int | None = None) -> None:
         r = self.renderer
