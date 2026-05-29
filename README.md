@@ -301,6 +301,8 @@ Pythonablo/
 
 ### Архитектура
 
+Диаграммы (Mermaid): **[docs/architecture.md](docs/architecture.md)** — слои, композиция `Game`, state machine, порядок update/draw, EventBus.
+
 - **`Game`** (`core/game.py`) — центральный класс: Pygame-цикл, переключение `GameState`, координация систем.
 - **`EventBus`** — pub/sub для событий (`enemy_killed`, `player_died`, `skill_cast` и др.).
 - **Системы** (`systems/`) — изолированная логика боя, AI, лута, бонусов, умений.
