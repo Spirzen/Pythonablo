@@ -35,7 +35,7 @@ def _noise_burst(duration: float, volume: float = 0.15, sample_rate: int = 22050
 class AudioSystem:
     SFX_NAMES = (
         "hit", "swing", "kill", "pickup", "rare_loot", "level_up",
-        "skill", "floor", "menu", "death", "gold", "ui",
+        "skill", "floor", "menu", "death", "gold", "ui", "combo", "boss_alert",
     )
 
     def __init__(self) -> None:
@@ -65,6 +65,8 @@ class AudioSystem:
             "death": lambda: _sine_wave(60, 0.5, 0.3),
             "gold": lambda: _sine_wave(880, 0.06, 0.12),
             "ui": lambda: _sine_wave(400, 0.04, 0.08),
+            "combo": lambda: _sine_wave(520, 0.18, 0.24),
+            "boss_alert": lambda: _sine_wave(70, 0.42, 0.28),
         }
         for name, fn in builders.items():
             try:

@@ -11,6 +11,7 @@ from typing import Optional
 
 import pygame
 
+from core.combo_defs import streak_milestone
 from core.config import (
     ARENA_ROUND_DIFFICULTY_STEP,
     ARENA_ROUND_DURATION,
@@ -39,6 +40,7 @@ from engine.input_handler import InputHandler
 from engine.motion import motion_visual, tick_motion
 from engine.map_renderer import MapRenderer
 from engine.renderer import Renderer, screen_to_world
+from engine.screen_flash import ScreenFlash
 from engine.sprite_catalog import SpriteCatalog
 from systems.effects import EffectSystem
 from systems.movement_system import MovementSystem
@@ -165,6 +167,11 @@ class Game:
         self._cached_portal_hint: str | None = None
         self.kill_streak: int = 0
         self.kill_streak_timer: float = 0.0
+        self.screen_flash = ScreenFlash()
+        self.epic_banner_text: str = ""
+        self.epic_banner_color: tuple[int, int, int] = (255, 200, 80)
+        self.epic_banner_timer: float = 0.0
+        self.hitstop_timer: float = 0.0
 
         self.events.subscribe("enemy_killed", self._on_enemy_killed)
         self.events.subscribe("item_dropped", self._on_item_dropped)
@@ -434,6 +441,8 @@ class Game:
         self._last_autosave_kills = 0
         self.kill_streak = 0
         self.kill_streak_timer = 0.0
+        self.epic_banner_timer = 0.0
+        self.hitstop_timer = 0.0
         self.difficulty = self.menu_ui.difficulty
         self.game_mode = mode
         self.floor_cache.clear()
@@ -653,6 +662,13 @@ class Game:
         self.audio.play_sfx("floor")
         if floor % 3 == 0:
             self.audio.play_music("boss")
+            if self.game_mode == GameMode.CLASSIC and not is_arena:
+                self.epic_banner_text = f"БОСС-ЭТАЖ — {floor}"
+                self.epic_banner_color = (255, 80, 55)
+                self.epic_banner_timer = 3.2
+                self.screen_flash.trigger((180, 30, 20), 0.55, alpha=150)
+                self.camera.add_shake(power=10.0, duration=0.2)
+                self.audio.play_sfx("boss_alert")
         else:
             self.audio.play_music("dungeon")
 
@@ -900,9 +916,26 @@ class Game:
         xp_gain = int(enemy.xp_value * xp_mult)
         ups = self.player.experience.add_xp(xp_gain)
         self.effects.spawn_xp_sparkles(enemy.x, enemy.y, amount=10 + min(12, self.kill_streak))
-        self.floating_texts.append((enemy.x, enemy.y - 0.3, f"+{xp_gain} XP", (255, 220, 90), 1.0))
+        self.floating_texts.append((enemy.x, enemy.y, f"+{xp_gain} XP", (255, 220, 90), 1.0))
         self.kill_streak += 1
         self.kill_streak_timer = 4.0
+        milestone = streak_milestone(self.kill_streak)
+        if milestone:
+            _, label, color = milestone
+            self.epic_banner_text = label
+            self.epic_banner_color = color
+            self.epic_banner_timer = 1.9
+            self.screen_flash.trigger(color, 0.32, alpha=110)
+            self.camera.add_shake(power=5.0 + self.kill_streak * 0.25, duration=0.14)
+            self.audio.play_sfx("combo")
+        if enemy.is_boss:
+            self.epic_banner_text = "БОСС ПОБЕЖДЁН!"
+            self.epic_banner_color = (255, 200, 80)
+            self.epic_banner_timer = 2.8
+            self.screen_flash.trigger((255, 50, 20), 0.55, alpha=190)
+            self.camera.add_shake(power=18.0, duration=0.28)
+            self.hitstop_timer = max(self.hitstop_timer, 0.12)
+            self.audio.play_sfx("boss_alert")
         for _ in range(ups):
             self.player.stats.on_level_up()
             self.player.skill_tree.unspent_points += 1
@@ -913,13 +946,12 @@ class Game:
         if ups > 0:
             self.level_up_text = f"Уровень {self.player.experience.level}!"
             self.level_up_banner = 3.0
+            self.screen_flash.trigger((255, 210, 80), 0.35, alpha=130)
             self.camera.add_shake(power=14.0 if ups > 1 else 10.0, duration=0.18)
             if self.player.skill_upgrades.pending_points > 0 and self.state == GameState.PLAYING:
                 self._prev_state = GameState.PLAYING
                 self.state = GameState.SKILL_UPGRADE
                 self.skill_upgrade_selected = 0
-        elif enemy.is_boss:
-            self.camera.add_shake(power=12.0, duration=0.14)
         self.player.clamp_resources()
         gold = random.randint(1, 4) + max(0, enemy.area_level // 2)
         fortune = self.player.equipment.legendary_bonus("fortune")
@@ -1023,12 +1055,16 @@ class Game:
         self.audio.play_sfx("death")
         self._autosave()
 
-    def _on_enemy_hit(self, enemy: EnemyEntity | None = None, **_) -> None:
-        self.camera.add_shake(power=7.5, duration=0.06)
+    def _on_enemy_hit(self, enemy: EnemyEntity | None = None, is_crit: bool = False, **_) -> None:
+        power = 10.5 if is_crit else 7.5
+        self.camera.add_shake(power=power, duration=0.08 if is_crit else 0.06)
         self.audio.play_sfx("hit")
+        if is_crit:
+            self.hitstop_timer = max(self.hitstop_timer, 0.05)
+            self.screen_flash.trigger((255, 200, 100), 0.07, alpha=55)
         if enemy:
             scale = enemy.draw_scale * (1.35 if enemy.is_boss else 1.0)
-            self.effects.spawn_hit_burst(enemy.x, enemy.y, scale=scale)
+            self.effects.spawn_hit_burst(enemy.x, enemy.y, scale=scale * (1.2 if is_crit else 1.0))
 
     def _on_attack_swung(self, hit_count: int = 0, **_) -> None:
         base_power = 2.8 if hit_count <= 0 else 4.0
@@ -1091,6 +1127,9 @@ class Game:
             self.level_up_banner -= dt
         if self.toast_timer > 0:
             self.toast_timer -= dt
+        self.screen_flash.update(dt)
+        if self.epic_banner_timer > 0:
+            self.epic_banner_timer -= dt
         alive_ft: list[tuple[float, float, str, tuple, float]] = []
         for wx, wy, msg, color, alpha in self.floating_texts:
             alpha -= dt * 1.2
@@ -1140,6 +1179,10 @@ class Game:
         gm = self.game_map
         inp = self.input.state
 
+        if self.hitstop_timer > 0:
+            self.hitstop_timer = max(0.0, self.hitstop_timer - dt)
+            dt *= 0.12
+
         if p.hit_flash > 0.12:
             self.kill_streak = 0
             self.kill_streak_timer = 0.0
@@ -1155,6 +1198,7 @@ class Game:
         mw = screen_to_world(*inp.mouse_pos, self.camera.x, self.camera.y)
         self.skills.update(dt, p, self.enemies, gm, inp.whirlwind, mw)
         self.effects.update(dt)
+        self.effects.tick_ambient(p.x, p.y, dt, boss_floor=(self.floor % 3 == 0))
         self.anim_time += dt
 
         for enemy in list(self.enemies):
@@ -1287,6 +1331,7 @@ class Game:
     def _go_floor_down(self) -> None:
         self._autosave()
         next_floor = self.floor + 1
+        self.screen_flash.trigger((70, 90, 160), 0.22, alpha=70)
         self._load_floor(next_floor, spawn_at_start=True, from_above=False)
 
     def _go_floor_up(self) -> None:
@@ -1328,11 +1373,18 @@ class Game:
                 self.hud.draw_arena_timer(self.arena_timer)
         if self.state == GameState.INVENTORY:
             self.inventory_ui.draw(self.player, mouse_pos=mouse)
+        notify_slot = 1 if self.arena_active else 0
         if self.level_up_banner > 0:
-            self.hud.draw_level_up_banner(self.level_up_text, self.level_up_banner)
+            self.hud.draw_level_up_banner(self.level_up_text, self.level_up_banner, slot=notify_slot)
+            notify_slot += 1
+        if self.epic_banner_timer > 0:
+            self.hud.draw_epic_banner(
+                self.epic_banner_text, self.epic_banner_color, self.epic_banner_timer, slot=notify_slot,
+            )
         if self.toast_timer > 0:
             self.hud.draw_toast(self.toast_message)
         self.hud.draw_floating_texts(self.floating_texts, self.camera)
+        self.screen_flash.draw(self.screen)
         if self.state == GameState.PAUSED:
             self.pause_ui.draw(self.player)
         elif self.state == GameState.SKILLS:
@@ -1424,8 +1476,14 @@ class Game:
             ):
                 body = (120, 200, 255) if self.villager.hit_flash <= 0 else (255, 255, 255)
                 r.draw_character_orb(msx, msy, 16 * scale, body, accent=(180, 230, 255))
-            r.blit_text_outlined(r.font_label, self.villager.name, (180, 230, 255), (int(msx) - 28, int(msy) - 42))
-            r.draw_hp_bar_world(msx, msy - int(32 * scale), self.villager.hp / max(self.villager.max_hp, 1), width=42)
+            r.blit_text_outlined_centered(
+                r.font_label, self.villager.name, (180, 230, 255), msx,
+                r.overhead_y(msy, "ability", scale), outline=(20, 40, 60),
+            )
+            r.draw_hp_bar_world(
+                msx, r.overhead_y(msy, "hp", scale),
+                self.villager.hp / max(self.villager.max_hp, 1), width=42,
+            )
 
         for enemy in self.enemies:
             if not enemy.alive:
@@ -1454,21 +1512,10 @@ class Game:
             if enemy.shield_timer > 0:
                 shield_r = int(22 * base_scale)
                 r.draw_aoe_ring_world(msx, msy, shield_r, (100, 180, 255), int(80 + 40 * math.sin(t * 6)), width=2)
-            if enemy.special_abilities and (
-                enemy.is_boss or enemy.is_floor_elite or self.player.distance_to(enemy) < 5.0
-            ):
-                ab_text = "+".join(enemy.special_abilities[:2])
-                r.blit_text_outlined(r.font_small, ab_text, (180, 160, 255), (int(msx) - 18, int(msy) - int(42 * base_scale)))
             if enemy.casting > 0:
                 cast_t = min(1.0, enemy.casting / 0.5)
                 cast_r = int(20 * base_scale + 12 * cast_t)
                 r.draw_aoe_ring_world(msx, msy, cast_r, (180, 90, 255), int(100 + 80 * cast_t), width=2)
-            if enemy.is_boss:
-                r.blit_text_outlined(r.font_label, "БОСС", (255, 90, 80), (int(msx) - 22, int(msy) - int(34 * base_scale)))
-            elif enemy.is_floor_elite:
-                r.blit_text_outlined(r.font_label, "ЭЛИТ", (255, 180, 60), (int(msx) - 18, int(msy) - int(38 * base_scale)))
-            elif enemy.is_treasure_goblin:
-                r.blit_text_outlined(r.font_label, "ЛУТ", (255, 220, 80), (int(msx) - 14, int(msy) - int(38 * base_scale)))
             show_hp = (
                 enemy.is_boss
                 or enemy.is_floor_elite
@@ -1476,8 +1523,40 @@ class Game:
                 or enemy.hp < enemy.max_hp * 0.98
                 or self.player.distance_to(enemy) < 5.5
             )
+            has_tag = enemy.is_boss or enemy.is_floor_elite or enemy.is_treasure_goblin
+            show_abilities = bool(
+                enemy.special_abilities
+                and (enemy.is_boss or enemy.is_floor_elite or self.player.distance_to(enemy) < 5.0)
+            )
             if show_hp:
-                r.draw_hp_bar_world(msx, msy - int(28 * base_scale), enemy.hp / max(enemy.max_hp, 1), width=int(38 * base_scale))
+                r.draw_hp_bar_world(
+                    msx,
+                    r.overhead_y(msy, "hp", base_scale),
+                    enemy.hp / max(enemy.max_hp, 1),
+                    width=int(38 * base_scale),
+                )
+            if enemy.is_boss:
+                r.blit_text_outlined_centered(
+                    r.font_label, "БОСС", (255, 90, 80), msx,
+                    r.overhead_y(msy, "tag", base_scale), outline=(60, 10, 10),
+                )
+            elif enemy.is_floor_elite:
+                r.blit_text_outlined_centered(
+                    r.font_label, "ЭЛИТ", (255, 180, 60), msx,
+                    r.overhead_y(msy, "tag", base_scale), outline=(60, 30, 10),
+                )
+            elif enemy.is_treasure_goblin:
+                r.blit_text_outlined_centered(
+                    r.font_label, "ЛУТ", (255, 220, 80), msx,
+                    r.overhead_y(msy, "tag", base_scale), outline=(60, 40, 10),
+                )
+            if show_abilities:
+                ab_text = "+".join(enemy.special_abilities[:2])
+                ab_layer = "ability" if has_tag else "tag"
+                r.blit_text_outlined_centered(
+                    r.font_small, ab_text, (180, 160, 255), msx,
+                    r.overhead_y(msy, ab_layer, base_scale), outline=(30, 20, 50),
+                )
 
         for exp in self.effects.explosions:
             sx, sy = cam.world_to_screen(exp.x, exp.y)
@@ -1502,6 +1581,18 @@ class Game:
                 self.screen.blit(glow, glow.get_rect(center=(int(sx), int(sy - 8))))
             pygame.draw.circle(self.screen, col, (int(sx), int(sy - 8)), size)
 
+        for ember in self.effects.ambient:
+            sx, sy = cam.world_to_screen(ember.x, ember.y)
+            if sx < -margin or sx > SCREEN_WIDTH + margin or sy < -margin or sy > SCREEN_HEIGHT + margin:
+                continue
+            flicker = 0.55 + 0.45 * math.sin(t * 4.0 + ember.phase)
+            er, eg, eb = ember.color
+            alpha = int(90 * flicker)
+            size = max(1, int(ember.size * flicker))
+            glow = pygame.Surface((size * 6, size * 6), pygame.SRCALPHA)
+            pygame.draw.circle(glow, (er, eg, eb, alpha), (size * 3, size * 3), size + 2)
+            self.screen.blit(glow, glow.get_rect(center=(int(sx), int(sy - 10))))
+
         for hb in self.effects.hit_bursts:
             sx, sy = cam.world_to_screen(hb.x, hb.y)
             progress = 1.0 - hb.life / max(hb.max_life, 0.001)
@@ -1524,16 +1615,15 @@ class Game:
             scale = 1.15 if is_crit else 1.0
             dmg_color = (255, 100, 60) if is_crit else (255, 230, 130)
             outline = (120, 20, 10) if is_crit else (80, 40, 10)
-            text = str(val)
-            font = r.font_damage
-            if is_crit:
-                text = f"{val}!"
-                font = r.font_mid
-            r.blit_text_outlined(
+            text = f"{val}!" if is_crit else str(val)
+            font = r.font_mid if is_crit else r.font_damage
+            dmg_y = r.overhead_y(sy, "damage", scale) - int((1.0 - alpha) * 18)
+            r.blit_text_outlined_centered(
                 font,
                 text,
                 dmg_color,
-                (int(sx) - 8, int(sy) - int(24 * scale)),
+                sx,
+                dmg_y,
                 outline=outline,
                 outline_width=3 if is_crit else 2,
                 alpha=int(alpha * 255),

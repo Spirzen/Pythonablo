@@ -158,27 +158,82 @@ class Renderer:
         outline_width: int = 2,
         alpha: int = 255,
     ) -> None:
+        cached = self._outlined_surface(font, text, color, outline=outline, outline_width=outline_width, alpha=alpha)
+        self.screen.blit(cached, (pos[0] - outline_width - 1, pos[1] - outline_width - 1))
+
+    def _outlined_surface(
+        self,
+        font: pygame.font.Font,
+        text: str,
+        color: tuple,
+        *,
+        outline: tuple = (20, 12, 8),
+        outline_width: int = 2,
+        alpha: int = 255,
+    ) -> pygame.Surface:
         key = (id(font), text, color, outline, outline_width, alpha)
         cached = self._text_cache.get(key)
-        if cached is None:
-            base = font.render(text, True, color)
-            w, h = base.get_size()
-            pad = outline_width + 1
-            surf = pygame.Surface((w + pad * 2, h + pad * 2), pygame.SRCALPHA)
-            ox, oy = pad, pad
-            for dx in range(-outline_width, outline_width + 1):
-                for dy in range(-outline_width, outline_width + 1):
-                    if dx * dx + dy * dy <= outline_width * outline_width + 1:
-                        shadow = font.render(text, True, outline)
-                        surf.blit(shadow, (ox + dx, oy + dy))
-            surf.blit(base, (ox, oy))
-            if alpha < 255:
-                surf.set_alpha(alpha)
-            if len(self._text_cache) >= self._MAX_TEXT_CACHE:
-                self._text_cache.clear()
-            self._text_cache[key] = surf
-            cached = surf
-        self.screen.blit(cached, (pos[0] - outline_width - 1, pos[1] - outline_width - 1))
+        if cached is not None:
+            return cached
+        base = font.render(text, True, color)
+        w, h = base.get_size()
+        pad = outline_width + 1
+        surf = pygame.Surface((w + pad * 2, h + pad * 2), pygame.SRCALPHA)
+        ox, oy = pad, pad
+        for dx in range(-outline_width, outline_width + 1):
+            for dy in range(-outline_width, outline_width + 1):
+                if dx * dx + dy * dy <= outline_width * outline_width + 1:
+                    shadow = font.render(text, True, outline)
+                    surf.blit(shadow, (ox + dx, oy + dy))
+        surf.blit(base, (ox, oy))
+        if alpha < 255:
+            surf.set_alpha(alpha)
+        if len(self._text_cache) >= self._MAX_TEXT_CACHE:
+            self._text_cache.clear()
+        self._text_cache[key] = surf
+        return surf
+
+    def blit_text_outlined_centered(
+        self,
+        font: pygame.font.Font,
+        text: str,
+        color: tuple,
+        cx: float,
+        y: float,
+        *,
+        anchor: str = "midbottom",
+        outline: tuple = (20, 12, 8),
+        outline_width: int = 2,
+        alpha: int = 255,
+    ) -> None:
+        surf = self._outlined_surface(
+            font, text, color, outline=outline, outline_width=outline_width, alpha=alpha,
+        )
+        if anchor == "midtop":
+            rect = surf.get_rect(midtop=(int(cx), int(y)))
+        elif anchor == "center":
+            rect = surf.get_rect(center=(int(cx), int(y)))
+        else:
+            rect = surf.get_rect(midbottom=(int(cx), int(y)))
+        self.screen.blit(surf, rect)
+
+    # Screen-pixel offsets above entity center (multiply by scale for large enemies).
+    OVERHEAD_HP = 38
+    OVERHEAD_TAG = 54
+    OVERHEAD_ABILITY = 70
+    OVERHEAD_DAMAGE = 62
+    OVERHEAD_FLOAT = 68
+
+    @staticmethod
+    def overhead_y(base_sy: float, layer: str, scale: float = 1.0) -> int:
+        offsets = {
+            "hp": Renderer.OVERHEAD_HP,
+            "tag": Renderer.OVERHEAD_TAG,
+            "ability": Renderer.OVERHEAD_ABILITY,
+            "damage": Renderer.OVERHEAD_DAMAGE,
+            "float": Renderer.OVERHEAD_FLOAT,
+        }
+        return int(base_sy - offsets.get(layer, 50) * scale)
 
     def _scaled_sprite(self, sprite: pygame.Surface, scale: float) -> pygame.Surface:
         if abs(scale - 1.0) < 0.02:

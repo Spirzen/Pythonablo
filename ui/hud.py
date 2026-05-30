@@ -6,6 +6,7 @@ import math
 
 import pygame
 
+from core.combo_defs import streak_tier
 from core.config import SCREEN_HEIGHT, SCREEN_WIDTH, UI_ACCENT, UI_CARD, UI_HP_BG, UI_HP_FILL, UI_MARGIN, UI_MP_BG, UI_MP_FILL, UI_PANEL_BORDER, UI_TEXT, UI_TEXT_DIM
 from engine.renderer import Renderer
 from entities.player import PlayerEntity
@@ -187,9 +188,12 @@ class HUD:
 
         if kill_streak >= 3 and kill_streak_timer > 0:
             combo_pulse = 0.75 + 0.25 * math.sin(self._anim * 10.0)
-            combo_col = (int(255 * combo_pulse), int(180 * combo_pulse), int(80 * combo_pulse))
+            tier = streak_tier(kill_streak)
+            tier_col = tier[1] if tier else (255, 180, 80)
+            combo_col = tuple(int(c * combo_pulse) for c in tier_col)
             bonus_pct = min(25, (kill_streak - 2) * 3)
-            combo_text = f"×{kill_streak}  +{bonus_pct}% XP"
+            tier_label = tier[0] if tier else "СЕРИЯ"
+            combo_text = f"{tier_label}  ×{kill_streak}  +{bonus_pct}% XP"
             combo_s = r.render_text(r.font_label, combo_text, combo_col)
             r.screen.blit(combo_s, combo_s.get_rect(topright=(inner_r, row2 - 2)))
 
@@ -355,37 +359,53 @@ class HUD:
             bag = r.font_label.render("INV", True, UI_TEXT_DIM)
             r.screen.blit(bag, bag.get_rect(midbottom=(cx, rect.bottom - 5)))
 
-    def draw_level_up_banner(self, text: str, remaining: float) -> None:
+    def _notify_y(self, slot: int = 0) -> int:
+        """Top-center notification strip — above the playfield, not over the player."""
+        return UI_MARGIN + self.HUD_H + 10 + slot * 46
+
+    def _draw_notify_strip(
+        self,
+        text: str,
+        color: tuple[int, int, int],
+        remaining: float,
+        *,
+        slot: int = 0,
+        subtitle: str | None = None,
+    ) -> None:
         r = self.renderer
-        alpha = min(1.0, remaining / 0.5)
-        pulse = 0.5 + 0.5 * math.sin(self._anim * 8)
-        y = 190
-        cx = SCREEN_WIDTH // 2
-        # Golden burst rays behind title
-        ray_s = pygame.Surface((520, 120), pygame.SRCALPHA)
-        for i in range(8):
-            angle = self._anim * 1.5 + i * (math.pi / 4)
-            rx = int(260 + math.cos(angle) * 90)
-            ry = int(60 + math.sin(angle) * 28)
-            ray_a = int(35 * alpha * pulse)
-            pygame.draw.line(ray_s, (255, 200, 80, ray_a), (260, 60), (rx, ry), 3)
-        r.screen.blit(ray_s, ray_s.get_rect(center=(cx, y + 28)))
-        banner = pygame.Surface((440, 72), pygame.SRCALPHA)
-        pygame.draw.rect(banner, (40, 28, 8, int(200 * alpha)), (0, 0, 440, 72), border_radius=16)
-        pygame.draw.rect(banner, (255, 200, 80, int(120 * alpha)), (0, 0, 440, 72), width=2, border_radius=16)
-        r.screen.blit(banner, banner.get_rect(center=(cx, y + 28)))
-        r.blit_text_outlined(
-            r.font_huge,
+        alpha = min(1.0, remaining / 0.45)
+        pulse = 0.8 + 0.2 * math.sin(self._anim * 8.0)
+        label = r.render_text(r.font_mid, text, color)
+        sub_s = r.render_text(r.font_small, subtitle, UI_TEXT_DIM) if subtitle else None
+        pad_x, pad_y = 22, 10 if subtitle else 12
+        w = max(280, label.get_width() + pad_x * 2)
+        if sub_s:
+            w = max(w, sub_s.get_width() + pad_x * 2)
+        h = 44 if subtitle else 40
+        surf = pygame.Surface((w, h), pygame.SRCALPHA)
+        pygame.draw.rect(surf, (16, 12, 22, int(210 * alpha)), (0, 0, w, h), border_radius=10)
+        pygame.draw.rect(surf, (*color, int(90 * alpha * pulse)), (0, 0, w, h), width=2, border_radius=10)
+        if sub_s:
+            surf.blit(label, label.get_rect(midtop=(w // 2, pad_y - 2)))
+            sub_s.set_alpha(int(200 * alpha))
+            surf.blit(sub_s, sub_s.get_rect(midtop=(w // 2, pad_y + 18)))
+        else:
+            surf.blit(label, label.get_rect(center=(w // 2, h // 2)))
+        surf.set_alpha(int(255 * alpha))
+        y = self._notify_y(slot)
+        r.screen.blit(surf, surf.get_rect(midtop=(SCREEN_WIDTH // 2, y)))
+
+    def draw_epic_banner(self, text: str, color: tuple[int, int, int], remaining: float, *, slot: int = 0) -> None:
+        self._draw_notify_strip(text, color, remaining, slot=slot)
+
+    def draw_level_up_banner(self, text: str, remaining: float, *, slot: int = 0) -> None:
+        self._draw_notify_strip(
             text,
             (255, 220, 80),
-            (cx - 160, y),
-            outline=(80, 50, 10),
-            outline_width=3,
-            alpha=int(255 * alpha),
+            remaining,
+            slot=slot,
+            subtitle="+1 очко навыка",
         )
-        sub = r.font_mid.render("+1 очко навыка", True, UI_ACCENT)
-        sub.set_alpha(int(220 * alpha * pulse))
-        r.screen.blit(sub, sub.get_rect(midtop=(cx, y + 58)))
 
     def draw_arena_timer(self, remaining: float, *, round_num: int | None = None) -> None:
         r = self.renderer
@@ -417,8 +437,8 @@ class HUD:
             if not msg:
                 continue
             sx, sy = camera.world_to_screen(wx, wy)
-            r.blit_text_outlined(
-                r.font_mid, msg, color,
-                (int(sx) - len(msg) * 4, int(sy) - 40),
+            float_y = r.overhead_y(sy, "float", 1.0) - int((1.0 - alpha) * 22)
+            r.blit_text_outlined_centered(
+                r.font_mid, msg, color, sx, float_y,
                 outline=(20, 10, 10), alpha=int(255 * alpha),
             )

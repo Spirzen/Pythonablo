@@ -102,7 +102,7 @@ class CombatSystem:
                     is_crit = True
                 enemy.take_damage(hit_dmg)
                 self.damage_numbers.append((enemy.x, enemy.y, int(hit_dmg), 1.0, is_crit))
-                self.events.emit("enemy_hit", enemy=enemy, damage=hit_dmg)
+                self.events.emit("enemy_hit", enemy=enemy, damage=hit_dmg, is_crit=is_crit)
                 hits += 1
                 explosive = player.equipment.legendary_bonus("explosive")
                 if explosive > 0 and random.random() < 0.15 * explosive:

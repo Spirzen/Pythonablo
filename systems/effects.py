@@ -47,15 +47,27 @@ class SpriteBurst:
     scale: float = 1.0
 
 
+@dataclass
+class AmbientEmber:
+    x: float
+    y: float
+    vy: float
+    phase: float
+    size: float
+    color: tuple[int, int, int]
+
+
 class EffectSystem:
     MAX_PARTICLES = 180
     MAX_EXPLOSIONS = 24
+    MAX_AMBIENT = 28
 
     def __init__(self) -> None:
         self.explosions: list[Explosion] = []
         self.rings: list[AoERing] = []
         self.particles: list[Particle] = []
         self.hit_bursts: list[SpriteBurst] = []
+        self.ambient: list[AmbientEmber] = []
         self.rng = random.Random()
 
     def spawn_death_explosion(self, x: float, y: float, *, big: bool = False) -> None:
@@ -149,6 +161,31 @@ class EffectSystem:
 
     def spawn_aoe_ring(self, x: float, y: float, radius: float, color: tuple[int, int, int] = (255, 200, 100)) -> None:
         self.rings.append(AoERing(x, y, life=0.35, max_life=0.35, max_radius=radius, color=color))
+
+    def tick_ambient(self, center_x: float, center_y: float, dt: float, *, boss_floor: bool = False) -> None:
+        target = self.MAX_AMBIENT if boss_floor else 18
+        while len(self.ambient) < target:
+            self.ambient.append(
+                AmbientEmber(
+                    center_x + self.rng.uniform(-7.0, 7.0),
+                    center_y + self.rng.uniform(-5.0, 5.0),
+                    vy=-12.0 - self.rng.random() * 18.0,
+                    phase=self.rng.random() * math.tau,
+                    size=1.5 + self.rng.random() * 2.5,
+                    color=self.rng.choice(
+                        [(255, 120, 40), (255, 80, 30), (220, 60, 20)]
+                        if boss_floor
+                        else [(255, 160, 70), (200, 120, 60), (180, 90, 50)]
+                    ),
+                )
+            )
+        alive: list[AmbientEmber] = []
+        for ember in self.ambient:
+            ember.y += ember.vy * dt
+            ember.x += math.sin(ember.phase + ember.y * 0.4) * 8.0 * dt
+            if math.hypot(ember.x - center_x, ember.y - center_y) < 9.0:
+                alive.append(ember)
+        self.ambient = alive
 
     def update(self, dt: float) -> None:
         for e in self.explosions:
