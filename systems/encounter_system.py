@@ -18,11 +18,11 @@ class EncounterType(Enum):
 
 
 ENCOUNTER_LABELS = {
-    EncounterType.PROTECT_NPC: "Защитите жителя!",
+    EncounterType.PROTECT_NPC: "Защитите жителя аула!",
     EncounterType.KILL_ALL_ELITE: "Убейте всех — появится элита!",
-    EncounterType.TREASURE_GOBLINS: "Сокровищники на этаже!",
-    EncounterType.RANDOM_DEBUFF: "Проклятие этажа…",
-    EncounterType.RANDOM_BUFF: "Благословение этажа!",
+    EncounterType.TREASURE_GOBLINS: "Кладоискатели на этаже!",
+    EncounterType.RANDOM_DEBUFF: "Проклятие степи…",
+    EncounterType.RANDOM_BUFF: "Благословение неба!",
     EncounterType.HORDE: "Орда! Врагов втрое больше!",
 }
 

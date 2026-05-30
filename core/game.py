@@ -33,6 +33,17 @@ from core.config import (
     TileType,
 )
 from world.collision import can_occupy, clamp_to_walkable
+from world.visual_themes import (
+    ENEMY_BODY,
+    ENEMY_GLOW,
+    MINION_BODY,
+    MINION_GLOW,
+    NPC_BODY,
+    NPC_GLOW,
+    PLAYER_BODY,
+    PLAYER_GLOW,
+    STATUS_TINTS,
+)
 from core.event_bus import EventBus
 from engine.audio import AudioSystem
 from engine.camera import Camera
@@ -368,7 +379,7 @@ class Game:
             self.toast_timer = 2.0
             self.audio.play_sfx("ui")
         elif action == "skills":
-            self.toast_message = "Найдите Наставника на этаже (появляется каждые 2–4 ур.)"
+            self.toast_message = "Найдите бабу-мудреца на этаже (появляется каждые 2–4 ур.)"
             self.toast_timer = 3.0
         elif action == "skill_upgrade":
             self._prev_state = GameState.PAUSED
@@ -397,32 +408,65 @@ class Game:
         if self.bg_sprite:
             scaled = pygame.transform.smoothscale(self.bg_sprite, (SCREEN_WIDTH, SCREEN_HEIGHT))
             overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-            overlay.fill((12, 8, 18, 150))
+            overlay.fill((18, 14, 10, 130))
             composite = scaled.copy()
             composite.blit(overlay, (0, 0))
             warmth = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
             cx, cy = SCREEN_WIDTH // 2, int(SCREEN_HEIGHT * 0.65)
             for ring in range(10, 0, -1):
-                alpha = int(14 * (1.0 - ring / 10))
-                pygame.draw.circle(warmth, (255, 140, 60, alpha), (cx, cy), ring * 60)
+                alpha = int(16 * (1.0 - ring / 10))
+                pygame.draw.circle(warmth, (255, 160, 70, alpha), (cx, cy), ring * 60)
             composite.blit(warmth, (0, 0))
             self._bg_composite = composite.convert()
         else:
             grad = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
             for y in range(SCREEN_HEIGHT):
                 t = y / SCREEN_HEIGHT
-                r = int(8 + t * 14)
-                g = int(10 + t * 16)
-                b = int(22 + t * 28)
+                r = int(14 + 70 * t + 35 * t * t)
+                g = int(20 + 45 * t + 25 * t * t)
+                b = int(42 - 15 * t)
                 pygame.draw.line(grad, (r, g, b), (0, y), (SCREEN_WIDTH, y))
-            # Subtle radial warmth at center-bottom (torchlight feel)
             warmth = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
             cx, cy = SCREEN_WIDTH // 2, int(SCREEN_HEIGHT * 0.72)
-            for ring in range(12, 0, -1):
-                alpha = int(18 * (1.0 - ring / 12))
-                pygame.draw.circle(warmth, (255, 160, 80, alpha), (cx, cy), ring * 55)
+            for ring in range(14, 0, -1):
+                alpha = int(22 * (1.0 - ring / 14))
+                pygame.draw.circle(warmth, (255, 170, 80, alpha), (cx, cy), ring * 50)
             grad.blit(warmth, (0, 0))
             self._bg_composite = grad.convert()
+
+    @staticmethod
+    def _enemy_shape(enemy: EnemyEntity) -> str:
+        if enemy.is_boss:
+            return "boss"
+        kind = enemy.kind.name
+        if kind == "BRUTE":
+            return "brute"
+        if kind == "RUNNER":
+            return "runner"
+        if kind == "CASTER":
+            return "caster"
+        return "default"
+
+    @staticmethod
+    def _enemy_status_tint(enemy: EnemyEntity) -> tuple[int, int, int] | None:
+        if enemy.poison_rem > 0:
+            return STATUS_TINTS["poison"]
+        if enemy.burn_rem > 0:
+            return STATUS_TINTS["burn"]
+        if enemy.bleed_rem > 0:
+            return STATUS_TINTS["bleed"]
+        if enemy.slow_rem > 0:
+            return STATUS_TINTS["slow"]
+        return None
+
+    def _draw_torchlight(self, cam: Camera) -> None:
+        px, py = cam.world_to_screen(self.player.x, self.player.y)
+        light = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        for ring in range(8, 0, -1):
+            alpha = int(14 * (1.0 - ring / 8))
+            rad = ring * 38
+            pygame.draw.circle(light, (255, 180, 90, alpha), (int(px), int(py)), rad)
+        self.screen.blit(light, (0, 0))
 
     @staticmethod
     def _menu_action_to_mode(action: str | None) -> GameMode | None:
@@ -636,7 +680,7 @@ class Game:
             self.arena_active = True
             self.arena_timer = ARENA_ROUND_DURATION
             self.arena_spawn_cd = 0.5
-            self.toast_message = "АРЕНА! Выживите 30 секунд!"
+            self.toast_message = "ИСПЫТАНИЕ! Выживите 30 секунд!"
             self.toast_timer = 4.0
             self._arena_spawn_wave()
         else:
@@ -663,7 +707,7 @@ class Game:
         if floor % 3 == 0:
             self.audio.play_music("boss")
             if self.game_mode == GameMode.CLASSIC and not is_arena:
-                self.epic_banner_text = f"БОСС-ЭТАЖ — {floor}"
+                self.epic_banner_text = f"ДИВ-ЭТАЖ — {floor}"
                 self.epic_banner_color = (255, 80, 55)
                 self.epic_banner_timer = 3.2
                 self.screen_flash.trigger((180, 30, 20), 0.55, alpha=150)
@@ -815,14 +859,14 @@ class Game:
         if floor % 3 == 2:
             sx = self.game_map.spawn_x + 0.5
             sy = self.game_map.spawn_y + 0.5
-            self.npcs.append(NPC(x=sx + 1.2, y=sy, name="Кузнец", dialog_id="smith", sprite_name="npc1.png"))
+            self.npcs.append(NPC(x=sx + 1.2, y=sy, name="Уста", dialog_id="smith", sprite_name="npc1.png"))
         if floor == self.next_mentor_floor:
             sx = self.game_map.spawn_x + 0.5
             sy = self.game_map.spawn_y + 0.5
             for ox, oy in ((2.5, 0.5), (-2.0, 1.0), (0.5, -2.0)):
                 wx, wy = sx + ox, sy + oy
                 if can_occupy(self.game_map, wx, wy):
-                    self.npcs.append(NPC(x=wx, y=wy, name="Наставник", dialog_id="mentor", sprite_name="npc2.png"))
+                    self.npcs.append(NPC(x=wx, y=wy, name="Баба-мудрец", dialog_id="mentor", sprite_name="npc2.png"))
                     break
             self._schedule_next_mentor()
 
@@ -929,7 +973,7 @@ class Game:
             self.camera.add_shake(power=5.0 + self.kill_streak * 0.25, duration=0.14)
             self.audio.play_sfx("combo")
         if enemy.is_boss:
-            self.epic_banner_text = "БОСС ПОБЕЖДЁН!"
+            self.epic_banner_text = "ДИВ ПОБЕЖДЁН!"
             self.epic_banner_color = (255, 200, 80)
             self.epic_banner_timer = 2.8
             self.screen_flash.trigger((255, 50, 20), 0.55, alpha=190)
@@ -1038,7 +1082,7 @@ class Game:
             self.player.equipment.consume_phoenix_amulet()
             self.player.stats.hp = self.player.max_hp * 0.5
             self.player.clamp_resources()
-            self.toast_message = "Амулет феникса воскресил вас!"
+            self.toast_message = "Оберег Яншишмы воскресил вас!"
             self.toast_timer = 3.5
             self.floating_texts.append(
                 (self.player.x, self.player.y, "ВОСКРЕШЕНИЕ!", (255, 180, 60), 1.0)
@@ -1169,7 +1213,7 @@ class Game:
                 self.audio.play_sfx("level_up")
             elif not endless and self.player.hp > 0:
                 self.arena_active = False
-                self.toast_message = "Арена пройдена! Спуск на следующий этаж…"
+                self.toast_message = "Испытание пройдено! Спуск на следующий этаж…"
                 self.toast_timer = 3.0
                 self.audio.play_sfx("level_up")
                 self._go_floor_down()
@@ -1222,7 +1266,7 @@ class Game:
                 self._spawn_protect_wave()
         elif self.villager and not self.villager.alive and not self._villager_failed:
             self.player.buffs.add("damage", 12.0, magnitude=-0.5)
-            self.toast_message = "Житель погиб! Вы ослаблены."
+            self.toast_message = "Житель аула погиб! Вы ослаблены."
             self.toast_timer = 3.0
             self._villager_failed = True
             self.villager = None
@@ -1303,12 +1347,12 @@ class Game:
             return
         for npc in self.npcs:
             if p.distance_to(npc) < 1.8:
-                label = "Наставник — пассивные навыки" if npc.dialog_id == "mentor" else npc.name
+                label = "Баба-мудрец — пассивные навыки" if npc.dialog_id == "mentor" else npc.name
                 self.portal_hint = f"[E] {label}"
                 return
         for pillar in self.pillars:
             if not pillar.used and p.distance_to(pillar) < 1.8:
-                self.portal_hint = "[E] Проклятое святилище"
+                self.portal_hint = "[E] Священный камень"
                 return
         if self._near_tile(TileType.EXIT):
             self.portal_hint = "[E] Спуститься вниз"
@@ -1455,11 +1499,11 @@ class Game:
             msx, msy, scale, shadow_w = self._motion_at(npc, sx, sy, base_scale=1.0)
             r.draw_entity_shadow(msx, msy, 16, width_scale=shadow_w)
             npc_sprite = self.sprites.get(npc.sprite_name) if npc.sprite_name else self.sprites.npc(npc.dialog_id)
-            glow = (180, 140, 255) if npc.dialog_id == "mentor" else (255, 200, 100)
+            glow = NPC_GLOW.get(npc.dialog_id, (255, 200, 100))
             if not r.blit_sprite(npc_sprite, msx, msy, scale=scale * 1.05, glow_color=glow):
-                body = (200, 160, 80) if npc.dialog_id == "smith" else (160, 140, 220)
-                r.draw_character_orb(msx, msy, 16 * scale, body, accent=glow)
-            name_col = (180, 140, 255) if npc.dialog_id == "mentor" else (255, 220, 140)
+                body = NPC_BODY.get(npc.dialog_id, (200, 160, 80))
+                r.draw_character_orb(msx, msy, 16 * scale, body, accent=glow, shape="default")
+            name_col = glow
             r.blit_text_outlined(r.font_label, npc.name, name_col, (int(msx) - 30, int(msy) - 42))
 
         if self.villager and self.villager.alive:
@@ -1499,16 +1543,21 @@ class Game:
                 kind=enemy.kind.name,
                 is_boss=enemy.is_boss,
             )
-            glow = (255, 80, 60) if enemy.is_boss else (255, 210, 60) if enemy.is_treasure_goblin else (200, 70, 70) if enemy.kind.name == "CASTER" else None
+            glow = (255, 80, 60) if enemy.is_boss else ENEMY_GLOW["treasure"] if enemy.is_treasure_goblin else ENEMY_GLOW.get(enemy.kind.name.lower(), ENEMY_GLOW["grunt"])
+            shape = self._enemy_shape(enemy)
+            status_tint = self._enemy_status_tint(enemy)
             if not r.blit_sprite(sprite, msx, msy, hit_flash=enemy.hit_flash > 0, scale=scale, glow_color=glow):
-                body = (190, 75, 75) if enemy.hit_flash <= 0 else (255, 255, 255)
                 if enemy.is_boss:
-                    body = (220, 60, 60)
-                elif enemy.kind.name == "CASTER":
-                    body = (140, 80, 200)
-                elif enemy.kind.name == "RUNNER":
-                    body = (210, 100, 70)
-                r.draw_character_orb(msx, msy, 18 * scale, body, accent=glow, hit_flash=enemy.hit_flash > 0)
+                    body = ENEMY_BODY["boss"]
+                elif enemy.is_treasure_goblin:
+                    body = ENEMY_BODY["treasure"]
+                else:
+                    body = ENEMY_BODY.get(enemy.kind.name.lower(), ENEMY_BODY["grunt"])
+                r.draw_character_orb(
+                    msx, msy, 18 * scale, body, accent=glow,
+                    hit_flash=enemy.hit_flash > 0,
+                    shape=shape, status_tint=status_tint if enemy.hit_flash <= 0 else None,
+                )
             if enemy.shield_timer > 0:
                 shield_r = int(22 * base_scale)
                 r.draw_aoe_ring_world(msx, msy, shield_r, (100, 180, 255), int(80 + 40 * math.sin(t * 6)), width=2)
@@ -1537,7 +1586,7 @@ class Game:
                 )
             if enemy.is_boss:
                 r.blit_text_outlined_centered(
-                    r.font_label, "БОСС", (255, 90, 80), msx,
+                    r.font_label, "ДИВ", (255, 90, 80), msx,
                     r.overhead_y(msy, "tag", base_scale), outline=(60, 10, 10),
                 )
             elif enemy.is_floor_elite:
@@ -1575,11 +1624,16 @@ class Game:
             pr, pg, pb = p.color
             col = (int(pr * fade), int(pg * fade), int(pb * fade))
             size = max(1, int(p.size * fade))
+            py_off = int(sy - 8)
+            if not p.circle and size > 1:
+                tail_x = int(sx - p.vx * 0.025)
+                tail_y = int(py_off - p.vy * 0.025)
+                pygame.draw.line(self.screen, col, (tail_x, tail_y), (int(sx), py_off), max(1, size // 2))
             if size > 2:
                 glow = pygame.Surface((size * 4, size * 4), pygame.SRCALPHA)
                 pygame.draw.circle(glow, (*col, int(80 * fade)), (size * 2, size * 2), size + 2)
-                self.screen.blit(glow, glow.get_rect(center=(int(sx), int(sy - 8))))
-            pygame.draw.circle(self.screen, col, (int(sx), int(sy - 8)), size)
+                self.screen.blit(glow, glow.get_rect(center=(int(sx), py_off)))
+            pygame.draw.circle(self.screen, col, (int(sx), py_off), size)
 
         for ember in self.effects.ambient:
             sx, sy = cam.world_to_screen(ember.x, ember.y)
@@ -1607,8 +1661,8 @@ class Game:
             sx, sy = cam.world_to_screen(m.x, m.y)
             msx, msy, scale, shadow_w = self._motion_at(m, sx, sy)
             r.draw_entity_shadow(msx, msy, 12 * scale, width_scale=shadow_w)
-            col = (100, 255, 160) if m.hit_flash <= 0 else (255, 255, 255)
-            r.draw_character_orb(msx, msy, 14 * scale, col, accent=(80, 220, 140), hit_flash=m.hit_flash > 0)
+            col = MINION_BODY if m.hit_flash <= 0 else (255, 255, 255)
+            r.draw_character_orb(msx, msy, 14 * scale, col, accent=MINION_GLOW, hit_flash=m.hit_flash > 0, shape="default")
 
         for sx_w, sy_w, val, alpha, is_crit in self.combat.damage_numbers:
             sx, sy = cam.world_to_screen(sx_w, sy_w)
@@ -1637,12 +1691,12 @@ class Game:
         if not r.blit_sprite(
             self.player_sprite, mpx, mpy,
             hit_flash=self.player.hit_flash > 0,
-            glow_color=(80, 220, 140),
+            glow_color=PLAYER_GLOW,
             scale=pscale,
         ):
             r.draw_character_orb(
-                mpx, mpy, 18 * pscale, (80, 230, 120),
-                accent=(100, 255, 180), hit_flash=self.player.hit_flash > 0,
+                mpx, mpy, 18 * pscale, PLAYER_BODY,
+                accent=PLAYER_GLOW, hit_flash=self.player.hit_flash > 0, shape="hero",
             )
 
         for arr in self.combat.arrows:
@@ -1668,4 +1722,12 @@ class Game:
             sx2, sy2 = cam.world_to_screen(ux + 0.5, uy + 0.5)
             r.draw_portal_marker(sx2, sy2, "НАЗАД", (140, 175, 255), t + 1.5, direction="up")
 
-        r.draw_vignette(0.85)
+        self._draw_torchlight(cam)
+        hp_ratio = self.player.hp / max(self.player.max_hp, 1)
+        vig_strength = 0.85
+        vig_tint = None
+        if hp_ratio < 0.35:
+            pulse = 0.5 + 0.5 * math.sin(t * 5.0)
+            vig_strength = 0.88 + 0.12 * pulse * (1.0 - hp_ratio / 0.35)
+            vig_tint = (120, 20, 10)
+        r.draw_vignette(vig_strength, tint=vig_tint)

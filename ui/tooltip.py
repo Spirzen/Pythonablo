@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pygame
 
-from core.config import LEGENDARY_AFFIXES, SCREEN_HEIGHT, SCREEN_WIDTH, UI_ACCENT, UI_PANEL, UI_PANEL_BORDER, UI_TEXT, UI_TEXT_DIM
+from core.config import LEGENDARY_AFFIXES, SCREEN_HEIGHT, SCREEN_WIDTH, UI_ACCENT, UI_PANEL, UI_PANEL_BORDER, UI_TEXT, UI_TEXT_DIM, ARCANE_SET_ID
 from core.config import EquipmentSlot
 from engine.renderer import Renderer
 from entities.player import PlayerEntity
@@ -16,10 +16,14 @@ GOOD = (100, 220, 130)
 BAD = (255, 110, 100)
 NEUTRAL = (180, 190, 210)
 
+SET_DISPLAY_NAMES = {
+    ARCANE_SET_ID: "Батырлық",
+}
+
 SKILL_INFO: dict[str, dict] = {
     "aoe": {
-        "title": "Ударная волна",
-        "desc": "Мощный взрыв вокруг героя, бьёт всех врагов рядом.",
+        "title": "Удар земли",
+        "desc": "Мощный удар по земле, бьёт всех врагов рядом.",
         "mana": SkillSystem.MANA_COSTS["aoe"],
         "cd": SkillSystem.COOLDOWNS["aoe"],
         "dmg_base": 32,
@@ -32,21 +36,21 @@ SKILL_INFO: dict[str, dict] = {
         "dmg_base": 28,
     },
     "summon": {
-        "title": "Призыв прислужника",
-        "desc": "Призывает союзника (до 3), атакует врагов.",
+        "title": "Призыв союзника",
+        "desc": "Призывает помощника (до 3), атакует врагов.",
         "mana": SkillSystem.MANA_COSTS["summon"],
         "cd": SkillSystem.COOLDOWNS["summon"],
         "dmg_base": 10,
     },
     "pulse": {
-        "title": "Импульс",
+        "title": "Импульс духа",
         "desc": "Быстрый энергетический импульс по ближайшим целям.",
         "mana": SkillSystem.MANA_COSTS["pulse"],
         "cd": SkillSystem.COOLDOWNS["pulse"],
         "dmg_base": 22,
     },
     "whirlwind": {
-        "title": "Вихрь",
+        "title": "Вихрь батыра",
         "desc": "Удерживай ПКМ — вращающаяся атака вокруг героя.",
         "mana": SkillSystem.MANA_COSTS["whirlwind"],
         "cd": 0,
@@ -79,7 +83,7 @@ def item_tooltip_rows(item: Item, player: PlayerEntity, *, compare_slot: Equipme
         rows.append((f"Слот: {item.slot.value}", UI_TEXT_DIM))
 
     if item.set_id:
-        rows.append((f"Комплект «{item.set_id}»", item.color))
+        rows.append((f"Комплект «{SET_DISPLAY_NAMES.get(item.set_id, item.set_id)}»", item.color))
     if item.legendary_affix and item.legendary_affix in LEGENDARY_AFFIXES:
         aff = LEGENDARY_AFFIXES[item.legendary_affix]
         rows.append((f"★ {aff['name']}", (255, 180, 60)))

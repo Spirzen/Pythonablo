@@ -54,11 +54,11 @@ CATEGORY_SLOTS = {
 }
 
 ARCANE_SET_NAMES = {
-    EquipmentSlot.SET_PRIMARY: "Обод силы",
-    EquipmentSlot.SET_SECONDARY: "Кристалл магии",
-    EquipmentSlot.SET_THIRD: "Печать стихий",
-    EquipmentSlot.SET_FOURTH: "Сфера разрушения",
-    EquipmentSlot.SET_FIFTH: "Ядро заклинателя",
+    EquipmentSlot.SET_PRIMARY: "Обод Хумай",
+    EquipmentSlot.SET_SECONDARY: "Кристалл Яншишмы",
+    EquipmentSlot.SET_THIRD: "Печать Самрау",
+    EquipmentSlot.SET_FOURTH: "Сфера дивов",
+    EquipmentSlot.SET_FIFTH: "Ядро батыра",
 }
 
 
@@ -201,7 +201,7 @@ class LootSystem:
             level=level,
             slot=slot,
             stats=stats,
-            description="Часть магического комплекта «Аркан». Усиливает заклинания и даёт бонусы комплекта.",
+            description="Часть комплекта «Батырлық». Усиливает духовную силу и даёт бонусы комплекта.",
             set_id=ARCANE_SET_ID,
         )
 

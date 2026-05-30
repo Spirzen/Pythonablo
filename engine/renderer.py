@@ -65,14 +65,21 @@ class Renderer:
             for y in range(0, h, 2):
                 for x in range(0, w, 2):
                     d = math.hypot(x - cx, y - cy) / max_dist
-                    alpha = int(180 * max(0.0, max(0.0, d - 0.35) ** 1.8))
+                    alpha = int(165 * max(0.0, max(0.0, d - 0.32) ** 1.6))
                     if alpha > 0:
-                        surf.fill((4, 6, 14, alpha), (x, y, 2, 2))
+                        surf.fill((18, 12, 8, alpha), (x, y, 2, 2))
             self._vignette = surf
         return self._vignette
 
-    def draw_vignette(self, strength: float = 1.0) -> None:
+    def draw_vignette(self, strength: float = 1.0, *, tint: tuple[int, int, int] | None = None) -> None:
         vig = self._ensure_vignette()
+        if tint and strength > 0.05:
+            tinted = vig.copy()
+            overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            tr, tg, tb = tint
+            overlay.fill((tr, tg, tb, int(80 * strength)))
+            tinted.blit(overlay, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+            vig = tinted
         if strength >= 0.99:
             self.screen.blit(vig, (0, 0))
         else:
@@ -89,15 +96,19 @@ class Renderer:
         border: tuple = UI_PANEL_BORDER,
         radius: int = 12,
         accent_top: bool = True,
+        shadow: bool = True,
     ) -> None:
+        if shadow:
+            sh = pygame.Surface((rect.w + 6, rect.h + 6), pygame.SRCALPHA)
+            pygame.draw.rect(sh, (0, 0, 0, 55), (4, 4, rect.w, rect.h), border_radius=radius)
+            self.screen.blit(sh, (rect.x - 2, rect.y - 1))
         surf = pygame.Surface((rect.w, rect.h), pygame.SRCALPHA)
         pygame.draw.rect(surf, (*fill, alpha), (0, 0, rect.w, rect.h), border_radius=radius)
-        # Inner top highlight
         highlight = pygame.Surface((rect.w - 4, max(8, rect.h // 5)), pygame.SRCALPHA)
         highlight.fill((255, 255, 255, 18))
         surf.blit(highlight, (2, 2))
         if accent_top:
-            pygame.draw.line(surf, (255, 198, 88, 140), (radius, 2), (rect.w - radius, 2), 2)
+            pygame.draw.line(surf, (218, 175, 55, 140), (radius, 2), (rect.w - radius, 2), 2)
         pygame.draw.rect(surf, (*border, 220), (0, 0, rect.w, rect.h), width=2, border_radius=radius)
         self.screen.blit(surf, rect.topleft)
 
@@ -303,38 +314,57 @@ class Renderer:
             self._shadow_cache[key] = surf
         self.screen.blit(surf, surf.get_rect(center=(int(sx), int(sy + radius * 0.35))))
 
-    def get_iso_tile_surface(self, color: tuple[int, int, int]) -> pygame.Surface:
-        cached = self._iso_tile_cache.get(color)
+    def get_iso_tile_surface(
+        self,
+        color: tuple[int, int, int],
+        *,
+        is_wall: bool = False,
+        seed: int = 0,
+    ) -> pygame.Surface:
+        cache_key = (*color, is_wall, seed % 7)
+        cached = self._iso_tile_cache.get(cache_key)
         if cached is not None:
             return cached
         hw, hh = ISO_TILE_W // 2, ISO_TILE_H // 2
         w, h = ISO_TILE_W + 8, ISO_TILE_H + 16
+        depth_h = 12 if is_wall else 7
         surf = pygame.Surface((w, h), pygame.SRCALPHA)
         cx, cy = w // 2, h // 2 - 4
         top = (cx, cy - 4)
         right = (cx + hw, cy + hh - 4)
         bottom = (cx, cy + ISO_TILE_H - 4)
         left = (cx - hw, cy + hh - 4)
-        top_color = _shade(color, 22)
-        left_color = _shade(color, -18)
-        right_color = _shade(color, -8)
+        top_color = _shade(color, 28 if is_wall else 22)
+        left_color = _shade(color, -22 if is_wall else -18)
+        right_color = _shade(color, -10 if is_wall else -8)
         pygame.draw.polygon(surf, top_color, [top, right, bottom, left])
-        depth_h = 7
         pygame.draw.polygon(
             surf,
             left_color,
             [left, bottom, (left[0], left[1] + depth_h), (bottom[0] - hw, bottom[1] + depth_h // 2)],
         )
+        if is_wall:
+            pygame.draw.polygon(
+                surf,
+                _shade(color, 12),
+                [right, bottom, (right[0], right[1] + depth_h // 2), (bottom[0] + hw // 2, bottom[1] + depth_h)],
+            )
         pygame.draw.line(surf, right_color, top, right, 1)
         pygame.draw.line(surf, right_color, right, bottom, 1)
         mid_l = ((top[0] + left[0]) // 2, (top[1] + left[1]) // 2)
         mid_r = ((top[0] + right[0]) // 2, (top[1] + right[1]) // 2)
-        pygame.draw.line(surf, _shade(color, 38), mid_l, top, 2)
-        pygame.draw.line(surf, _shade(color, 38), top, mid_r, 2)
+        pygame.draw.line(surf, _shade(color, 42), mid_l, top, 2)
+        pygame.draw.line(surf, _shade(color, 42), top, mid_r, 2)
         pygame.draw.polygon(surf, _shade(color, -35), [top, right, bottom, left], 1)
+        if not is_wall and seed % 3 == 0:
+            for i in range(3):
+                ox = ((seed + i * 5) % 9) - 4
+                oy = ((seed + i * 7) % 7) - 3
+                speck = _shade(color, -12 + (i * 4))
+                pygame.draw.circle(surf, speck, (cx + ox, cy + oy), 1)
         if len(self._iso_tile_cache) >= self._MAX_TILE_CACHE:
             self._iso_tile_cache.clear()
-        self._iso_tile_cache[color] = surf
+        self._iso_tile_cache[cache_key] = surf
         return surf
 
     def draw_iso_tile(
@@ -414,21 +444,52 @@ class Renderer:
         *,
         accent: tuple[int, int, int] | None = None,
         hit_flash: bool = False,
+        shape: str = "default",
+        status_tint: tuple[int, int, int] | None = None,
     ) -> None:
         if hit_flash:
             body = (255, 255, 255)
+        elif status_tint:
+            body = (
+                int(body[0] * 0.65 + status_tint[0] * 0.35),
+                int(body[1] * 0.65 + status_tint[1] * 0.35),
+                int(body[2] * 0.65 + status_tint[2] * 0.35),
+            )
         r = int(radius)
-        self.draw_entity_shadow(sx, sy, radius)
+        width_scale = 1.0
+        height_scale = 1.0
+        if shape == "hero":
+            height_scale = 1.12
+            width_scale = 0.92
+        elif shape == "brute":
+            width_scale = 1.28
+            height_scale = 1.08
+        elif shape == "runner":
+            width_scale = 0.82
+            height_scale = 0.92
+        elif shape == "caster":
+            height_scale = 1.05
+        elif shape == "boss":
+            width_scale = 1.35
+            height_scale = 1.2
+        self.draw_entity_shadow(sx, sy, radius, width_scale=width_scale * 1.05)
         if accent:
-            glow = pygame.Surface((r * 4, r * 4), pygame.SRCALPHA)
-            pygame.draw.circle(glow, (*accent, 35), (r * 2, r * 2), r + 6)
+            glow = pygame.Surface((r * 5, r * 5), pygame.SRCALPHA)
+            glow_alpha = 45 if shape != "boss" else 55
+            glow_r = r + (10 if shape == "boss" else 6)
+            pygame.draw.ellipse(glow, (*accent, glow_alpha), (r * 2 - int(glow_r * width_scale), r * 2 - glow_r, int(glow_r * 2 * width_scale), glow_r * 2))
             self.screen.blit(glow, glow.get_rect(center=(int(sx), int(sy))))
-        # Body gradient approximation
-        body_s = pygame.Surface((r * 2 + 4, r * 2 + 4), pygame.SRCALPHA)
-        pygame.draw.circle(body_s, body, (r + 2, r + 2), r)
-        pygame.draw.circle(body_s, _shade(body, 35), (r + 2, r + 2 - r // 3), max(2, r // 2))
-        pygame.draw.circle(body_s, _shade(body, -40), (r + 2, r + 2 + r // 4), max(2, r // 3))
-        pygame.draw.circle(body_s, _shade(body, -25), (r + 2, r + 2), r, 2)
+        body_s = pygame.Surface((int(r * 2 * width_scale) + 8, int(r * 2 * height_scale) + 8), pygame.SRCALPHA)
+        cx, cy = body_s.get_width() // 2, body_s.get_height() // 2
+        rx, ry = int(r * width_scale), int(r * height_scale)
+        pygame.draw.ellipse(body_s, body, (cx - rx, cy - ry, rx * 2, ry * 2))
+        pygame.draw.ellipse(body_s, _shade(body, 40), (cx - rx // 2, cy - ry, max(2, rx), max(2, ry // 2)))
+        pygame.draw.ellipse(body_s, _shade(body, -35), (cx - rx, cy - ry // 3, rx * 2, ry * 2), 2)
+        if shape == "hero":
+            pygame.draw.arc(body_s, accent or (218, 175, 55), (cx - rx, cy - ry, rx * 2, ry * 2), math.pi * 0.15, math.pi * 0.85, 2)
+        elif shape == "caster":
+            ring_col = accent if accent else (180, 120, 255)
+            pygame.draw.ellipse(body_s, (*ring_col, 80), (cx - rx - 4, cy - ry - 6, (rx + 4) * 2, (ry + 4) * 2), 2)
         self.screen.blit(body_s, body_s.get_rect(center=(int(sx), int(sy))))
 
     def draw_loot_orb(self, sx: float, sy: float, color: tuple, anim: float) -> None:
@@ -624,5 +685,5 @@ class Renderer:
             r = 26 - i * 5
             alpha = 80 - i * 22
             surf = pygame.Surface((r * 2, r * 2), pygame.SRCALPHA)
-            pygame.draw.circle(surf, (100, 200, 255, alpha), (r, r), r, 2)
+            pygame.draw.circle(surf, (218, 175, 55, alpha), (r, r), r, 2)
             self.screen.blit(surf, surf.get_rect(center=(int(sx), int(sy))))

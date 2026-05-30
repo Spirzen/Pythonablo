@@ -118,8 +118,8 @@ class MenuUI:
             r.screen.blit(glow, glow.get_rect(center=(SCREEN_WIDTH // 2, ly + lh // 2)))
             r.screen.blit(self._logo, (lx, ly))
         else:
-            r.blit_text_outlined(r.font_huge, "PYTHONABLO", UI_TEXT, (SCREEN_WIDTH // 2 - 200, 52), outline=(30, 20, 10), outline_width=3)
-            sub = r.font_title.render("DIABLOID ARPG", True, UI_ACCENT)
+            r.blit_text_outlined(r.font_huge, "ПРИКЛЮЧЕНИЯ", UI_TEXT, (SCREEN_WIDTH // 2 - 220, 52), outline=(30, 20, 10), outline_width=3)
+            sub = r.font_title.render("УРАЛА БАТЫРА", True, UI_ACCENT)
             r.screen.blit(sub, sub.get_rect(midtop=(SCREEN_WIDTH // 2, 128)))
 
         diff_y = content_top

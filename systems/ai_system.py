@@ -165,7 +165,7 @@ class AISystem:
             sprite_name="enemy_normal.png",
             visual_scale=0.85,
             is_treasure_goblin=True,
-            display_name="Сокровищник",
+            display_name="Кладоискатель",
         )
         return goblin
 

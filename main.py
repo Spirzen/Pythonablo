@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pythonablo — 2D isometric ARPG (Diabloid)."""
+"""Приключения Урала Батыра — 2D isometric ARPG."""
 
 from core.game import Game
 

@@ -34,7 +34,7 @@ class UIStyles:
         if cached is not None:
             return cached
         surf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-        surf.fill((6, 8, 18, alpha))
+        surf.fill((12, 10, 8, alpha))
         cls._dim_overlays[alpha] = surf
         return surf
 
@@ -48,16 +48,32 @@ class UIStyles:
             base = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
             for y in range(0, SCREEN_HEIGHT, 2):
                 t = y / SCREEN_HEIGHT
-                col = (int(8 + 14 * t), int(10 + 12 * t), int(20 + 22 * t))
-                pygame.draw.rect(base, col, (0, y, SCREEN_WIDTH, 2))
+                r = int(12 + 80 * t + 40 * t * t)
+                g = int(18 + 50 * t + 30 * t * t)
+                b = int(38 - 18 * t)
+                pygame.draw.rect(base, (r, g, b), (0, y, SCREEN_WIDTH, 2))
             cls._menu_bg = base.convert()
         out = cls._menu_bg.copy()
-        for i in range(8):
-            ox = SCREEN_WIDTH * (0.12 + 0.11 * i) + math.sin(anim + i) * 30
-            oy = SCREEN_HEIGHT * (0.25 + 0.08 * (i % 3)) + math.cos(anim * 0.7 + i) * 20
-            rad = int(40 + 20 * math.sin(anim * 0.5 + i))
+        sun_x = SCREEN_WIDTH // 2 + int(math.sin(anim * 0.15) * 40)
+        sun_y = int(SCREEN_HEIGHT * 0.38)
+        sun = pygame.Surface((220, 220), pygame.SRCALPHA)
+        for ring in range(8, 0, -1):
+            alpha = int(18 + 12 * (1 - ring / 8))
+            rad = ring * 14
+            pygame.draw.circle(sun, (255, 190, 80, alpha), (110, 110), rad)
+        pygame.draw.circle(sun, (255, 210, 100, 90), (110, 110), 28)
+        out.blit(sun, sun.get_rect(center=(sun_x, sun_y)))
+        for i in range(10):
+            ox = SCREEN_WIDTH * (0.08 + 0.09 * i) + math.sin(anim * 0.6 + i * 1.3) * 35
+            oy = SCREEN_HEIGHT * (0.55 + 0.06 * (i % 4)) + math.cos(anim * 0.45 + i) * 25
+            rad = int(28 + 14 * math.sin(anim * 0.5 + i))
             surf = pygame.Surface((rad * 2, rad * 2), pygame.SRCALPHA)
-            color = (255, 180, 80, 12) if i % 2 == 0 else (100, 140, 255, 10)
+            if i % 3 == 0:
+                color = (218, 175, 55, 14)
+            elif i % 3 == 1:
+                color = (120, 160, 90, 12)
+            else:
+                color = (180, 100, 60, 10)
             pygame.draw.circle(surf, color, (rad, rad), rad)
             out.blit(surf, surf.get_rect(center=(int(ox), int(oy))))
         return out
@@ -106,7 +122,7 @@ class UIStyles:
         hovered: bool = False,
         font: pygame.font.Font | None = None,
     ) -> None:
-        bg = (32, 36, 52) if hovered else (22, 24, 36)
+        bg = (38, 34, 26) if hovered else (28, 24, 18)
         pygame.draw.rect(screen, bg, rect, border_radius=6)
         border = UI_ACCENT if hovered else UI_PANEL_BORDER
         pygame.draw.rect(screen, border, rect, width=2 if hovered else 1, border_radius=6)

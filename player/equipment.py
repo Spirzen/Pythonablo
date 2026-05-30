@@ -165,8 +165,8 @@ class Equipment:
         overrides = self.skill_overrides()
         layout = [
             ("1/F", "fireball", "Огонь"),
-            ("2", overrides.get("aoe", "aoe"), "Волна"),
-            ("3", overrides.get("summon", "summon"), "Приз."),
+            ("2", overrides.get("aoe", "aoe"), "Земля"),
+            ("3", overrides.get("summon", "summon"), "Союз."),
             ("4", overrides.get("pulse", "pulse"), "Имп."),
         ]
         return layout

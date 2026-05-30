@@ -183,7 +183,7 @@ class MerchantUI:
                     self.selected_inv_index = inv_indices[0]
         return False
 
-    def draw(self, player: PlayerEntity, npc_name: str = "Кузнец") -> None:
+    def draw(self, player: PlayerEntity, npc_name: str = "Уста") -> None:
         r = self.renderer
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
         overlay.fill((6, 8, 18, 215))

@@ -7,11 +7,11 @@ from dataclasses import dataclass, field
 UPGRADEABLE_SKILLS = ("aoe", "fireball", "whirlwind", "pulse", "summon")
 
 SKILL_UPGRADE_LABELS = {
-    "aoe": "Ударная волна",
+    "aoe": "Удар земли",
     "fireball": "Огненный шар",
-    "whirlwind": "Вихрь",
-    "pulse": "Импульс",
-    "summon": "Призыв",
+    "whirlwind": "Вихрь батыра",
+    "pulse": "Импульс духа",
+    "summon": "Призыв союзника",
 }
 
 SKILL_UPGRADE_EFFECTS = {
@@ -19,7 +19,7 @@ SKILL_UPGRADE_EFFECTS = {
     "fireball": "Размер снаряда +40%",
     "whirlwind": "Красный вихрь, +15% урона",
     "pulse": "Радиус +30%",
-    "summon": "+1 прислужник, +20% HP",
+    "summon": "+1 союзник, +20% HP",
 }
 
 

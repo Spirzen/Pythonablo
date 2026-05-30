@@ -9,16 +9,16 @@ from player.buffs import BONUS_LABELS, BuffManager
 
 PILLAR_EFFECTS: list[tuple[str, str, bool, float, float]] = [
     # id, label, is_buff, magnitude, duration
-    ("hp_burst", "Исцеление!", True, 0.0, 0.0),
-    ("mana_burst", "Приток маны!", True, 0.0, 0.0),
-    ("damage", "Сила!", True, 1.0, 12.0),
+    ("hp_burst", "Живая вода!", True, 0.0, 0.0),
+    ("mana_burst", "Приток силы!", True, 0.0, 0.0),
+    ("damage", "Сила батыра!", True, 1.0, 12.0),
     ("speed", "Стремительность!", True, 1.0, 10.0),
     ("armor", "Каменная кожа!", True, 1.0, 15.0),
-    ("skill_boost", "Мощь умений!", True, 1.0, 12.0),
+    ("skill_boost", "Мощь духов!", True, 1.0, 12.0),
     ("weakness", "Слабость…", False, 1.0, 10.0),
     ("slow", "Вязкость…", False, 1.0, 8.0),
     ("mana_drain", "Истощение…", False, 0.0, 0.0),
-    ("curse_touch", "Проклятие…", False, 1.0, 8.0),
+    ("curse_touch", "Проклятие Улема…", False, 1.0, 8.0),
 ]
 
 

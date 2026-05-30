@@ -9,6 +9,7 @@ import pygame
 from core.config import ISO_TILE_H, ISO_TILE_W, MAP_HEIGHT, MAP_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, TileType
 from engine.renderer import Renderer, world_to_screen
 from world.map import GameMap
+from world.visual_themes import floor_palette, floor_variation, tile_color
 
 
 class MapRenderer:
@@ -36,9 +37,10 @@ class MapRenderer:
 
     def _build(self, game_map: GameMap) -> None:
         r = self.renderer
+        palette = floor_palette(game_map.floor, game_map.map_type)
         min_sx, min_sy = 10**9, 10**9
         max_sx, max_sy = -10**9, -10**9
-        static_tiles: list[tuple[int, int, tuple[int, int, int]]] = []
+        static_tiles: list[tuple[int, int, tuple[int, int, int], bool, int, int]] = []
 
         for y in range(MAP_HEIGHT):
             for x in range(MAP_WIDTH):
@@ -47,14 +49,13 @@ class MapRenderer:
                     continue
                 if tile.type in (TileType.START, TileType.EXIT, TileType.STAIRS_UP):
                     continue
-                color = tile.color()
+                is_wall = tile.type == TileType.WALL
                 if tile.type == TileType.FLOOR:
-                    if game_map.map_type == "arena":
-                        color = (58, 42, 52)
-                    elif (x + y) % 7 == 0:
-                        color = (44, 50, 66)
+                    color = floor_variation(x, y, palette)
+                else:
+                    color = palette["wall"]
                 sx, sy = world_to_screen(x, y, 0, 0)
-                static_tiles.append((int(sx), int(sy), color))
+                static_tiles.append((int(sx), int(sy), color, is_wall, x, y))
                 min_sx = min(min_sx, sx - ISO_TILE_W)
                 max_sx = max(max_sx, sx + ISO_TILE_W)
                 min_sy = min(min_sy, sy - ISO_TILE_H)
@@ -68,11 +69,11 @@ class MapRenderer:
         self._origin = (ox, oy)
 
         static_tiles.sort(key=lambda t: t[0] + t[1])
-        for sx, sy, color in static_tiles:
-            tx = sx + ox
-            ty = sy + oy
-            surf = r.get_iso_tile_surface(color)
-            layer.blit(surf, surf.get_rect(center=(tx, ty)))
+        for sx, sy, color, is_wall, tx, ty in static_tiles:
+            tx_pos = sx + ox
+            ty_pos = sy + oy
+            surf = r.get_iso_tile_surface(color, is_wall=is_wall, seed=tx * 17 + ty * 31)
+            layer.blit(surf, surf.get_rect(center=(tx_pos, ty_pos)))
 
         self._layer = layer
 
@@ -81,7 +82,6 @@ class MapRenderer:
         if self._layer is None:
             return
         ox, oy = self._origin
-        # sx0/sy0 already include SCREEN center; only subtract camera and layer padding offset.
         blit_x = int(-cam_x - ox)
         blit_y = int(-cam_y - oy)
         screen.blit(self._layer, (blit_x, blit_y))
@@ -103,18 +103,15 @@ class MapRenderer:
                 sx, sy = world_to_screen(x, y, cam_x, cam_y)
                 if sx < -margin or sx > SCREEN_WIDTH + margin or sy < -margin or sy > SCREEN_HEIGHT + margin:
                     continue
-                color = tile.color()
+                color = tile_color(tile.type, game_map.floor, game_map.map_type)
                 pulse = 0.5 + 0.5 * math.sin(anim_time * 2.8 + x)
                 accent = None
                 if tile.type == TileType.START:
-                    color = (46, 118, 82)
-                    accent = (80, 200, 120)
+                    accent = (90, 210, 120)
                 elif tile.type == TileType.EXIT:
-                    color = (158, 62, 48)
                     pulse = 0.5 + 0.5 * math.sin(anim_time * 3.0 + y)
-                    accent = (255, 120, 70)
+                    accent = (255, 160, 80)
                 elif tile.type == TileType.STAIRS_UP:
-                    color = (72, 102, 162)
                     pulse = 0.5 + 0.5 * math.sin(anim_time * 2.8)
-                    accent = (130, 170, 255)
+                    accent = (140, 180, 255)
                 r.draw_iso_tile(x, y, cam_x, cam_y, color, pulse=pulse, accent=accent)

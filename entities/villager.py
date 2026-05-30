@@ -9,7 +9,7 @@ from entities.entity import Entity
 
 @dataclass
 class VillagerNPC(Entity):
-    name: str = "Житель"
+    name: str = "Житель аула"
     sprite_name: str = "npc3.png"
     max_hp: float = 120.0
     hp: float = 120.0

@@ -34,10 +34,10 @@ class Tile:
 
     def color(self) -> tuple[int, int, int]:
         return {
-            TileType.VOID: (8, 8, 14),
-            TileType.FLOOR: (48, 54, 72),
-            TileType.WALL: (22, 26, 38),
-            TileType.START: (52, 128, 88),
-            TileType.EXIT: (168, 72, 52),
-            TileType.STAIRS_UP: (82, 118, 178),
+            TileType.VOID: (6, 8, 12),
+            TileType.FLOOR: (68, 82, 48),
+            TileType.WALL: (46, 52, 36),
+            TileType.START: (52, 118, 72),
+            TileType.EXIT: (168, 88, 48),
+            TileType.STAIRS_UP: (72, 108, 168),
         }[self.type]

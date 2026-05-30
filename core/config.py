@@ -13,7 +13,7 @@ SAVE_DIR = BASE_DIR / "save_data"
 SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 720
 FPS = 120
-TITLE = "Pythonablo — Diabloid ARPG"
+TITLE = "Приключения Урала Батыра"
 
 TILE_SIZE = 48
 MAP_WIDTH = 61
@@ -45,20 +45,20 @@ XP_LEVEL_ADD = 5
 XP_EARLY_CAP = 8
 XP_EARLY_STEP = 0.045
 
-# UI palette — refined dark fantasy
+# UI palette — степь, золото эпоса, небо Урала
 UI_MARGIN = 20
-UI_ACCENT = (255, 204, 96)
-UI_ACCENT_DIM = (190, 150, 70)
-UI_TEXT = (245, 247, 252)
-UI_TEXT_DIM = (145, 155, 175)
-UI_PANEL = (12, 14, 26)
-UI_PANEL_BORDER = (62, 78, 128)
-UI_HP_FILL = (88, 228, 112)
-UI_HP_BG = (48, 22, 28)
-UI_MP_FILL = (110, 185, 255)
-UI_MP_BG = (22, 28, 52)
-UI_CARD = (32, 36, 58)
-UI_CARD_HOVER = (48, 54, 88)
+UI_ACCENT = (218, 175, 55)
+UI_ACCENT_DIM = (160, 125, 45)
+UI_TEXT = (248, 242, 228)
+UI_TEXT_DIM = (160, 150, 130)
+UI_PANEL = (18, 20, 28)
+UI_PANEL_BORDER = (90, 110, 70)
+UI_HP_FILL = (185, 65, 50)
+UI_HP_BG = (52, 24, 22)
+UI_MP_FILL = (75, 140, 210)
+UI_MP_BG = (22, 32, 48)
+UI_CARD = (44, 38, 28)
+UI_CARD_HOVER = (64, 54, 38)
 
 # Loot rarity colors
 RARITY_COLORS = {
@@ -137,16 +137,16 @@ class GameMode(Enum):
 
 
 GAME_MODE_LABELS = {
-    GameMode.CLASSIC: "Классика",
-    GameMode.ARENA: "Арена",
-    GameMode.ARENA_BOSSES: "Арена с боссами",
-    GameMode.SPEED: "Скорость",
+    GameMode.CLASSIC: "Путь батыра",
+    GameMode.ARENA: "Испытание",
+    GameMode.ARENA_BOSSES: "Битва с дивами",
+    GameMode.SPEED: "Стремительный поход",
 }
 
 GAME_MODE_DESCRIPTIONS = {
-    GameMode.CLASSIC: "Подземелья, этажи, лут и наставник",
+    GameMode.CLASSIC: "Степи и горы, этажи, добыча и баба-мудрец",
     GameMode.ARENA: "Выживание: каждые 30 сек — новый раунд",
-    GameMode.ARENA_BOSSES: "Арена, но все враги — боссы",
+    GameMode.ARENA_BOSSES: "Испытание, но все враги — дивы-боссы",
     GameMode.SPEED: "×2 скорость, только бонусы, автоподбор",
 }
 

@@ -62,7 +62,7 @@ class EnemyEntity(Entity):
         if self.display_name:
             return self.display_name
         if self.is_treasure_goblin:
-            return "Сокровищник"
+            return "Кладоискатель"
         if self.is_boss:
             return "Босс"
         if self.is_floor_elite:

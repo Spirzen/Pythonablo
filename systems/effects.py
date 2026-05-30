@@ -98,16 +98,17 @@ class EffectSystem:
         if len(self.particles) + count > self.MAX_PARTICLES:
             count = max(8, self.MAX_PARTICLES - len(self.particles))
         red_palette = [
-            (255, 40, 20),
-            (255, 80, 40),
-            (220, 20, 10),
-            (255, 140, 60),
-            (180, 0, 0),
-            (255, 200, 100),
+            (255, 70, 35),
+            (255, 110, 50),
+            (210, 45, 25),
+            (255, 150, 70),
+            (180, 30, 15),
+            (255, 190, 90),
         ]
         for _ in range(count):
             angle = self.rng.random() * math.tau
             speed = 120 + self.rng.random() * (320 if big else 220)
+            streak = self.rng.random() < 0.35
             self.particles.append(
                 Particle(
                     x,
@@ -118,6 +119,7 @@ class EffectSystem:
                     max_life=0.7,
                     size=5 + self.rng.random() * (9 if big else 6),
                     color=self.rng.choice(red_palette),
+                    circle=not streak,
                 )
             )
 
@@ -173,9 +175,9 @@ class EffectSystem:
                     phase=self.rng.random() * math.tau,
                     size=1.5 + self.rng.random() * 2.5,
                     color=self.rng.choice(
-                        [(255, 120, 40), (255, 80, 30), (220, 60, 20)]
+                        [(255, 90, 40), (255, 60, 30), (200, 50, 25)]
                         if boss_floor
-                        else [(255, 160, 70), (200, 120, 60), (180, 90, 50)]
+                        else [(255, 170, 70), (210, 130, 60), (180, 100, 50), (218, 175, 55)]
                     ),
                 )
             )

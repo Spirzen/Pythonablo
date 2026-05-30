@@ -24,10 +24,10 @@ class HUD:
     SKILL_GAP = 10
 
     SKILL_COLORS = {
-        "fireball": (255, 90, 40),
-        "aoe": (255, 160, 60),
-        "summon": (120, 255, 140),
-        "pulse": (120, 180, 255),
+        "fireball": (255, 120, 45),
+        "aoe": (210, 145, 55),
+        "summon": (90, 175, 95),
+        "pulse": (95, 155, 210),
         "power_strike": (255, 200, 80),
         "knife_fan": (200, 200, 220),
         "meteor": (255, 120, 40),
@@ -338,7 +338,7 @@ class HUD:
         lbl = r.font_label.render("ПКМ", True, UI_TEXT if active else UI_TEXT_DIM)
         r.screen.blit(lbl, lbl.get_rect(topleft=(rect.left + 7, rect.top + 6)))
         if self._icon_whirlwind is None:
-            sub = r.font_label.render("Вихрь", True, UI_TEXT_DIM)
+            sub = r.font_label.render("Батыр", True, UI_TEXT_DIM)
             r.screen.blit(sub, sub.get_rect(midbottom=(rect.centerx, rect.bottom - 6)))
 
     def _draw_inventory_button(self, r: Renderer) -> None:
@@ -412,7 +412,7 @@ class HUD:
         if round_num is not None:
             text = f"РАУНД {round_num} — {max(0, int(remaining) + 1)} сек"
         else:
-            text = f"АРЕНА — {max(0, int(remaining) + 1)} сек"
+            text = f"ИСПЫТАНИЕ — {max(0, int(remaining) + 1)} сек"
         pulse = 0.7 + 0.3 * math.sin(self._anim * 6)
         col = (int(255 * pulse), int(120 * pulse), int(80 * pulse))
         surf = pygame.Surface((380, 48), pygame.SRCALPHA)
